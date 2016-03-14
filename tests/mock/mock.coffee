@@ -161,7 +161,10 @@ class MockComponent extends EventEmitter
     @dependencies = {}
     @offerings[name] = @_createChannel(name, data) for name, data of provided
     @dependencies[name] = @_createChannel(name, data) for name, data of required
-    @proxyTcp = new ProxyTcp @
+
+    @proxyTcp = new ProxyTcp @iid, @role, \
+                             JSON.parse(@parameters.proxyTcp), \
+                             @offerings, @dependencies
 
   run: () -> # for tests, returns a promise
     @proxyTcp.init()

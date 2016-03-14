@@ -13,20 +13,20 @@ DuplexConnectPort   = require './duplex-connect-port'
 class ProxyTcp
 
 
-  constructor: (@owner) ->
+  constructor: (@iid, @role, @config, offerings, dependencies) ->
     method = 'ProxyTcp.constructor'
     @logger.info "#{method}"
     try
-      if typeof(@owner.parameters.proxyTcp.legacyScript) is 'function'
-        @legacyScript = @owner.parameters.proxyTcp.legacyScript
+      if typeof(@config.legacyScript) is 'function'
+        @legacyScript = @config.legacyScript
       else
-        @legacyScript = require @owner.parameters.proxyTcp.legacyScript
+        @legacyScript = require @config.legacyScript
     catch e
       @logger.error "#{method} #{e.stack}"
       throw e
     @channels = {} # each item contains slap-channel and its proxy
-    @_addProxyChannels(@channels, @owner.offerings, @owner.parameters.proxyTcp)
-    @_addProxyChannels(@channels, @owner.dependencies, @owner.parameters.proxyTcp)
+    @_createProxyChannels(offerings, @config)
+    @_createProxyChannels(dependencies, @config)
 
 
   init: () ->
@@ -36,7 +36,7 @@ class ProxyTcp
       promises = []
       promises.push channel.proxy.init() for name, channel of @channels
       q.all promises
-      .then () => @legacy 'run', {bindIp: ipUtils.getIpFromIid(@owner.iid)}
+      .then () => @legacy 'run', {bindIp: ipUtils.getIpFromIid(@iid)}
       .then () -> resolve()
       .fail (err) -> reject err
 
@@ -54,15 +54,15 @@ class ProxyTcp
       .fail (err) -> reject err
 
 
-  _addProxyChannels: (channels, source, config) ->
-    method = 'ProxyTcp._addProxyChannels'
+  _createProxyChannels: (source, config) ->
+    method = 'ProxyTcp._createProxyChannels'
     for name, channel of source
       if config.channels[name]? # It's a proxy-channel
         @logger.info "#{method} Processing #{name} channel"
         @channels[name] =
           channel: channel
           proxy: @_createProxy(channel, config.channels[name])
-        @logger.info "#{method} Add #{channels[name].proxy.constructor.name} \
+        @logger.info "#{method} Add #{@channels[name].proxy.constructor.name} \
                       to #{name} channel"
 
 
@@ -88,7 +88,7 @@ class ProxyTcp
       when 'Receive'
         Proxy = ProxyReceive
       else throw new Error "Proxy for #{channel.name}: invalid type #{type}"
-    return new Proxy(@, @owner.role, @owner.iid, channel, config)
+    return new Proxy(@, @role, @iid, channel, config)
 
 
   legacy: (op, params) ->
@@ -96,8 +96,8 @@ class ProxyTcp
     @logger.info "#{method} op=#{op}"
     return q.promise (resolve, reject) =>
       try
-        channels = _.cloneDeep @owner.parameters.proxyTcp.channels
-        @legacyScript(op, @owner.iid, @owner.role, channels, params)
+        channels = _.cloneDeep @config.channels
+        @legacyScript(op, @iid, @role, channels, params)
         .then () =>
           @logger.info "#{method} done"
           resolve()
