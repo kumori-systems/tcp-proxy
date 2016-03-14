@@ -1,1 +1,475 @@
-TBD
+ProxyTCP
+========
+Juanjo Valero
+v0.0.1, 2016-02-17
+
+
+
+Descripción
+-----------
+
+Tenemos varios elementos legacy (A, B, C...).
+En un despliegue "legacy", podríamos tener varias replicas de cada elemento, que se comunican entre ellos a través de TCP, organizados según una cierta topología.
+
+A la hora de realizar el despliegue en SLAP, cada una de esas replicas estará alojada en una instancia de un componente (A1, A2, B1, ...).
+
+La topología entre los elementos legacy, la trasladamos a una topología entre componentes SLAP, vía canales.
+Haya donde tengamos una potencial conexión TCP entre un elemento A y B, estableceremos un conector entre sus respectivos componentes.
+Es decir: si el elemento A puede conectarse a un puerto del elemento B, entonces tendremos un conector (y sus respectivos canales) entre los componentes A y B.
+Usaremos un conector u otro en función de las propiedades de la comunicación entre A y B.
+
+Junto con el código legacy de A, B, C..., se proporciona un "legacy.js", que permitirá al componente SLAP realizar acciones de inicialización/finalización/configuración sobre el elemento legacy.
+
+
+Todo componente SLAP qué contenga elementos legacy, y que por tanto necesite "proxificar" sus comunicación TCP a través de canales SLAP, deberá:
+- Describirlo en su manifiesto
+- Instanciar un objeto de la clase ProxyTcp, que se encarga de:
+  -- Determinar que canales se utilizan para qué comunicaciones TCP
+  -- Realizar la "proxificación" de estas comunicaciones
+  -- Invocar a Legacy.js para inicializar/finalizar/configurar los elementos legacy.
+
+Realmente el objeto ProxyTcp será un contenedor de objetos, cada uno de los cuales se encarga de gestionar un canal:
+- ProxyDuplexBind
+- ProxyDuplexConnect
+- ProxyRequest
+- ProxyReply
+- ProxySend
+- ProxyReceive
+
+
+
+Conector STAR
+-------------
+
+Supongamos que el legacy-A debe conocer qué legacy-B existen, ya que es susceptible de establecer conexión con cualquiera de ellos (tal vez con uno, tal vez con varios). Es decir: es el código legacy el que decide a qué elemento concreto de B conectarse: implementa todo el protocolo de comunicación.
+
+En este caso, usaremos star+dúplex:
+
+[source]
+A-->(dup1)-->star1-->(dup2)-->B
+
+
+
+Cada instancia de A conoce qué instancias de B existen (vía getMembership/changeMembership).
+Cada instancia de B conoce qué instancias de A existen (por el mismo mecanismo), aunque no lo va a necesitar.
+Cada instancia de A y B tiene asignada una IP de loopback (127.0.0.2, 127.0.0.3...), y cualquier instancia puede conocer la IP asignada a cualquier otra instancia (la IP se obtiene a partir del iid, en una relación uno-a-uno).
+Cada instancia de A y B necesita conocer el puerto TCP que utiliza en la comunicación.
+
+
+
+Componente A
+~~~~~~~~~~~~
+
+El manifiesto de A será:
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup1": {
+          "port": 80,
+          "mode": "connect"
+        }
+      }
+    }
+  },
+  "provided":{},
+  "required":{
+    "dup1": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+Las instancias de A, asociado al canal dup1 (connect/80), tendrán un objeto "ProxyDuplexBind".
+Dicho objeto tendrá una lista objetos BindPort: uno por cada instancia de B existente.
+Estos BindPort son objetos que "suplantan" a las instancias de B, y que abren un puerto tcp en:
+  - bind-ip: la IP asignada (calculable) a la instancia B.
+  - bind-port: el indicado en configuración
+
+Los objetos BindPort existen en función de la membresía del conector star1.
+Por defecto, A asume que debe crear BindPort cuando se añaden a star1 nuevas instancias cuyo role NO sea A (A no tiene información acerca de cuál es el role de las instancias con las que se comunica).
+
+El componente A invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, update, shutdown)
+- Role de la instancia
+- El modo (connect)
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+- Miembros (iid, role y bind-ip asignada) actuales de la membresía
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto ProxyDuplexBind convierte las acciones a nivel TCP en mensajes slap:
+- Establecimiento de una conexión A->B
+- Envío de datos A->B
+- Cierre de conexión por parte de A
+
+
+
+Componente B
+~~~~~~~~~~~~
+
+El manifiesto de B será:
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup2": {
+          "port": 80,
+          "mode": "bind"
+        }
+      }
+    }
+  },
+  "provided":{
+  },
+  "required":{
+    "dup2": {}
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+Las instancias de B, asociado al canal dup2 (bind/80), tendrán un objeto "ProxyDuplexConnect".
+Dicho objeto tendrá un objeto ConnectPort cada vez que reciba un mensaje de "establecimiento de una conexión A->B" (y que ocurrirá cuando una instancia de A establezca conexión con el objeto "suplantador" de B). De forma equivalente, estos objetos ConnectPort se eliminan cuando B cierra la conexión TCP, o al recibir un mensaje "Cierre de conexión por parte de A".
+
+Cada objeto ConnectPort almacena:
+  - el iid de la instancia A,
+  - el puerto efímero usado en la conexión establecida por A.
+Los objetos ConnectPort existen en función de las conexiones que crean los elementos A.
+
+
+El componente B invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, update, shutdown)
+- Role de la instancia
+- El modo (bind)
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+- Miembros (iid, role e bind-ip asignada) actuales de la membresía
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto ProxyDuplexConnect convierte las acciones a nivel TCP en mensajes slap:
+- Envío de datos B->A
+- Cierre de conexión por parte de B
+
+
+
+Asignación de IPs
+~~~~~~~~~~~~~~~~~
+
+Cada vez que añadimos un BindPort a un objeto ProxyDuplexBind, entonces debemos elegir la IP sobre la que hacemos el bind.
+Para que todas las instancias tengan la misma visión de "dónde está cada elemento legacy" (mejor dicho: dónde está cada elemento "suplantador"), entonces calculamos una IP de loopback en función del ID de la instancia.
+Estas IP de loopback estarán en el rango 127.0.0.2 - 127.0.255.254 (disponibles 65533 direcciones)
+
+Asumimos que el ID de una instancia se compone como:
+  role_contadordespliegues_contadorinstancias
+
+El contador de instancias tendrá valores en el rango [0..65532], y no podrán repetirse dentro de un mismo despliegue. SLAP irá asignando IPs de forma rotatoria, "saltándose" aquellos que estén ocupados.
+
+Nota: en una primera fase, usaremos el formato actual de ID: role_contadorglobal
+
+
+
+Conector LoadBalancer
+---------------------
+
+Supongamos que, por las propiedades de A y B:
+- A solo puede ser configurado para conectarse a un elemento B.
+- Sin embargo, es factible meter un balanceador en medio (un balanceador genérico), que reparta las peticiones de A entre varios elementos B. (configuramos A para que se conecte al balanceador, y no directamente a B)
+- A y B admiten un balanceador round-robin, y no exige stickiness.
+
+
+En este caso, usaremos LB+req/rep:
+
+[source]
+A-->(req1)-->LB1-->(rep1)-->B
+
+
+Las instancias de A no conocen qué instancias de B existen, ni a cuál están llegando sus peticiones.
+Las instancias de B no conocen qué instancias de A existen, ni de cuál están llegando las peticiones.
+
+
+
+Componente A
+~~~~~~~~~~~~
+
+El manifiesto de A será:
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "req1": {
+          "port": 90,
+          "mode": "connect"
+        }
+      }
+    }
+  },
+  "provided":{
+  },
+  "required":{
+    "req1":{
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+Las instancias de A, asociado al canal req1, tendrán un objeto "ProxyRequest".
+ProxyRequest abre (bind) el puerto configurado (90), en una IP de loopback que asociamos al canal req1.
+
+La IP de loopback la elegimos en el rango 127.1.0.1 - 127.1.255.255 (disponibles 65534).
+Esta asignación es local a la instancia (pueden repetirse en otras instancias).
+
+Este ProxyRequest suplanta al componente B (o dicho de otra forma: suplanta a todas las instancias de B), y existe independientemente de que realmente existan o no instancias de B.
+
+El componente A invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, shutdown)
+- Role de la instancia
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto "ProxyRequest" convierte las acciones a nivel TCP en mensajes slap:
+- Envío de peticiones A->B
+- No se notifica el establecimiento/cierre de conexiones.
+
+
+
+Componente B
+~~~~~~~~~~~~
+
+El manifiesto de B será:
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "rep1": {
+          "port": 90,
+          "mode": "bind"
+        }
+      }
+    }
+  },
+  "provided":{
+    "rep1":{
+      "channel_type":"slap://slapdomain/endpoints/reply",
+      "protocol": {}
+    }
+  },
+  "required":{
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+Las instancias de B, asociado al canal rep1, tendrán un objeto ProxyReply.
+
+Cada vez que una instancia de A envíe una petición a su "B", ésta llegará al ProxyReply de alguna instancia de B.
+Esta petición incluirá tanto la petición original, como una cabecera con el puerto TCP de conexión (puerto efímero) utilizado por el elemento A. Esto es neceario para trabajar con la posibilidad de que A establezca varias conexiones simultáneas.
+
+En ese momento, ProxyReply creará un objeto "connectport" que:
+- Crea la conexión con el elemento legacy B.
+- Envía la petición al elemento legacy B,
+- Espera la respuesta, que devuelve (o vencerá un timeout)
+- Cierra la conexión.
+
+
+El componente B invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, update, shutdown)
+- Role de la instancia
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto ProxyDuplexConnect convierte las acciones a nivel TCP en mensajes slap:
+- Envío de respuestas B->A
+
+
+
+Asignación de IPs
+~~~~~~~~~~~~~~~~~
+
+Los elementos B, tendrán asociada una bind-ip calculada tal y como se ha indicado para el conector star.
+Lo que estamos haciendo es asociar inequívocamente UNA ip a cada instancia.
+
+Los objetos proxyrequest también necesitan un bind-ip.
+En este caso NO nos importa ser coherentes respecto a otras instancias.
+Cada instancia irá asignado incrementalmente direcciones del rango 127.1.0.1 - 127.1.255.255 (65534 IPs).
+
+
+
+CONECTOR PUBSUB
+---------------
+
+Pendiente.
+
+[source]
+A-->(send1)-->PS-->(recv1)-->B
+
+
+Supongamos que A publica mensajes, y que B los recibe (suscribe).
+
+Si el mecanismo de publicación/suscripción está DENTRO de A y B, entonces podemos proxificar estos elementos usando el conector START.
+
+PERO: supongamos que A y B delegan el mecanimo de publicación/suscripción en algún "broker-legacy".
+En este caso, podemos ELIMINAR dicho broker, si A y B usan un conector STAR.
+Esto no es transparente para A y B: al fin y al cabo será como si utilizaran un nuevo "broker-legacy", con su propio interfaz.
+
+
+Puede haber varios componentes publicadores y varios componentes suscriptores (PUBSUB lo permite).
+
+En el publicador, tendremos un objeto proxysend.
+Este proxysend puede trabajar de 2 formas, dependiendo de cómo sea el legacy: bind o connect.
+En cualquier de los 2 casos, haremos lo mismo: para cada tcp.read() en el proxysend, realizaremos un "send" por el canal
+
+Èn el suscriptor, tendremos un objeto proxyrecv.
+Este proxysend puede trabajar de 2 formas, dependiendo de cómo sea el legacy: bind o connect.
+En cualquier de los 2 casos, haremos lo mismo: cada vez que recibamos algo por el canal, generaremos un TCP.write().
+
+¿Y como integro aquí los topics?
+Necesariamente algo habrá que hacer en la parte legacy (tal y como tendrían que hacer si cambiaran de broker-legacy).
+
+
+
+EJEMPLO DE MANIFIESTOS
+----------------------
+
+Componentes A y B.
+Son componentes legacy que se relacionan al mismo tiempo de 3 formas:
+A-->(dup1)-->star1-->(dup2)-->B   (puerto 80)
+A-->(req1)-->LB1-->(rep1)-->B     (puerto 90)
+A-->(send1)-->PS-->(recv1)-->B    (puerto 70)
+
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup1": {
+          "port": 80,
+          "mode": "connect"
+        },
+        "req1": {
+          "port": 90,
+          "mode": "connect"
+        },
+        "send1": {
+          "port": 70,
+          "mode": "connect"
+        }
+      }
+    }
+  },
+  "provided":{
+    "send1":{
+      "channel_type":"slap://slapdomain/endpoints/send",
+      "protocol": {}
+    }
+  },
+  "required":{
+    "req1":{
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    },
+    "dup1": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup2": {
+          "port": 80,
+          "mode": "bind"
+        },
+        "rep1": {
+          "port": 90,
+          "mode": "bind"
+        },
+        "recv1": {
+          "port": 70,
+          "mode": "bind"
+        }
+      }
+    }
+  },
+  "provided":{
+    "rep1":{
+      "channel_type":"slap://slapdomain/endpoints/reply",
+      "protocol": {}
+    }
+  },
+  "required":{
+    "dup2": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    },
+    "recv1": {
+      "channel_type": "slap://slapdomain/endpoints/receive",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
