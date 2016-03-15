@@ -60,7 +60,7 @@ class ProxyDuplexBind
           members: []
         for iid, bindPort of @bindPorts
           params.members.push {iid:iid, port:bindPort.port, ip:bindPort.ip}
-        @owner.legacy 'duplex', params
+        @owner.legacy 'changeMembership', params
 
 
   _createMember: (iid) ->

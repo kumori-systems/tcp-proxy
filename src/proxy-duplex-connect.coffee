@@ -84,12 +84,12 @@ class ProxyDuplexConnect
       else
         port = new @config.DuplexConnectPort \
           @iid, msg.fromInstance, @bindIp, msg.bindPort, msg.connectPort
-        @connectPorts[id] = port
         port.init()
         .then () =>
           port.on 'connectOnData', @_onConnectData
           port.on 'connectOnDisconnect', @_onConnectDisconnect
-          resolve @connectPorts[id]
+          @connectPorts[id] = port
+          resolve port
         .fail (err) ->
           reject err
 
