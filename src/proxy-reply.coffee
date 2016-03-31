@@ -4,9 +4,10 @@ q = require 'q'
 class ProxyReply
 
 
-  constructor: (@owner, @role, @iid, @channel, @config) ->
+  constructor: (@owner, @role, @iid, @channel) ->
     method = 'ProxyReply.constructor'
-    @logger.info "#{method} role=#{@role},iid=#{@iid},channel=#{@channel.name}"
+    @logger.info "#{method} role=#{@role},iid=#{@iid},\
+                  channel=#{@channel.name}"
 
 
   init: () ->

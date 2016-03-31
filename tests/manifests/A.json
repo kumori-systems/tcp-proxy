@@ -4,7 +4,7 @@
   "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
   "code":"",
   "configuration":{
-    "proxyTcp": "{\"legacyScript\":\"../tests/scripts/legacy.js\",\"channels\":{\"dup1\":{\"port\":8000,\"mode\":\"connect\"},\"req1\":{\"port\":9000,\"mode\":\"connect\"},\"send1\":{\"port\":7000,\"mode\":\"connect\"}}}"
+    "proxyTcp": "{\"dup1\":{\"port\":8000,\"mode\":\"bind\"},\"req1\":{\"port\":9000},\"send1\":{\"port\":7000}}"
   },
   "provided":{
     "send1":{

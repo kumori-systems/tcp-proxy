@@ -23,8 +23,8 @@ LAST_POOL_IP_RANGE = POOL_IP_QUANTITY+FIRST_POOL_IP_RANGE # 127.1.255.255
 num2Ip = (num) ->
   d = num%256
   for i in [1..3]
-    num = Math.floor(num/256)
-    d = num%256 + '.' + d
+    num = Math.floor(num / 256)
+    d = (num % 256) + '.' + d
   return d
 
 pool_counter = 0

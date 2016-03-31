@@ -1,16 +1,25 @@
 q = require 'q'
 _ = require 'lodash'
+DuplexBindPort = require './duplex-bind-port'
 slaputils = require 'slaputils'
 Semaphore = require './semaphore'
 
 
 GETROLE_TIMEOUT = 10000
 
-
+# Proxy for duplex 'bind' channels
+#
 class ProxyDuplexBind
 
 
-  constructor: (@owner, @role, @iid, @channel, @config) ->
+  # Parameters:
+  # @owner: proxytcp container (permits issue events)
+  # @iid: owner instance iid
+  # @role: owner instance role
+  # @channel: duplex channel
+  # @port: legacy bind tcp port
+  #
+  constructor: (@owner, @role, @iid, @channel, @port) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}"
     method = 'ProxyDuplexBind.constructor'
     @logger.info "#{method} #{@name}"
@@ -27,9 +36,11 @@ class ProxyDuplexBind
       @channel.on 'changeMembership', @_onChangeMembership
       @channel.on 'message', @_onMessage
       @channel.getMembership()
-      .then (members) => @_onChangeMembership(members)
-      .then () -> resolve()
-      .fail (err) -> reject err
+      .then (members) =>
+        @_onChangeMembership(members)
+        resolve()
+      .fail (err) ->
+        reject err
 
 
   terminate: () ->
@@ -60,7 +71,7 @@ class ProxyDuplexBind
           members: []
         for iid, bindPort of @bindPorts
           params.members.push {iid:iid, port:bindPort.port, ip:bindPort.ip}
-        @owner.legacy 'changeMembership', params
+        @owner.emit 'change', params
 
 
   _createMember: (iid) ->
@@ -80,7 +91,7 @@ class ProxyDuplexBind
             @currentMembership.push iid
             resolve() # do nothing
           else
-            bindPort = new @config.DuplexBindPort(@iid, iid, @config.port)
+            bindPort = new DuplexBindPort(@iid, iid, @port)
             @bindPorts[iid] = bindPort
             @bindPorts[iid].init()
             .then (res, err) =>
@@ -129,14 +140,18 @@ class ProxyDuplexBind
       # Solución temporal -- ver ticket 445
       # Reenvío la petición cada segundo, porque puede ocurrir que la instancia
       # destino no exista (y no tengo manera de saberlo). Esto puede ocurrir
-      # en tanto que el evento onChangeMembership no está ligada a la
-      # real de la instancia.
+      # en tanto que onChangeMembership no está ligado a la existencia real
+      # de la instancia.
       idInterval = setInterval () =>
         @channel.send [@parser.encode message], iid
       , 1000
 
       idTimeout = setTimeout () =>
-        if @getRolePromises[message.id]? then reject(new Error 'Timeout')
+        promise = @getRolePromises[message.id]
+        if promise?
+          clearTimeout promise.idTimeout
+          clearInterval promise.idInterval
+          promise.reject(new Error 'Timeout')
       , GETROLE_TIMEOUT
 
       @getRolePromises[message.id] =
@@ -161,7 +176,8 @@ class ProxyDuplexBind
         if rolePromise?
           clearTimeout rolePromise.idTimeout
           clearInterval rolePromise.idInterval
-          if message.err? then rolePromise.reject message.err
+          if message.err?
+            rolePromise.reject new Error(message.err)
           else rolePromise.resolve message.result
         else
           @logger.warn "#{method} #{@name} Unexpected getrole message \

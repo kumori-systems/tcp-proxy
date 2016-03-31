@@ -6,7 +6,7 @@ index = require('../src/index')
 DuplexConnectPort = index.DuplexConnectPort
 
 
-describe 'ConnectBindPort Tests', ->
+describe 'ConnectPort Tests', ->
 
 
   parser = new slaputils.JsonParser()
@@ -19,8 +19,8 @@ describe 'ConnectBindPort Tests', ->
 
 
   before (done) ->
-    slaputils.setLoggerOwner 'DuplexConnectPortTest'
-    logger = slaputils.getLogger 'DuplexConnectPortTest'
+    slaputils.setLoggerOwner 'ConnectPort'
+    logger = slaputils.getLogger 'ConnectPort'
     logger.configure {
       'console-log' : false
       'console-level' : 'debug'
@@ -50,8 +50,7 @@ describe 'ConnectBindPort Tests', ->
       connectPortA1_2 = new DuplexConnectPort 'B_2', 'A_1', '127.0.0.2',
                                               8000, 5002
       connectPortA1_1.init()
-      .then () ->
-        connectPortA1_2.init()
+      .then () -> connectPortA1_2.init()
       .then () -> done()
       .fail (err) -> done err
 
@@ -61,6 +60,14 @@ describe 'ConnectBindPort Tests', ->
     .then () -> connectPortA1_2.terminate()
     .then () -> done()
     .fail (err) -> done err
+    pendingDisconnect = 2
+    checkClose = () ->
+      pendingDisconnect--
+      if pendingDisconnect is 0
+        tcpServer.close()
+        done()
+    connectPortA1_1.once 'connectOnDisconnect', (event) -> checkClose()
+    connectPortA1_2.once 'connectOnDisconnect', (event) -> checkClose()
 
 
   it 'Sends a message and connectport emits a response', (done) ->
@@ -75,7 +82,7 @@ describe 'ConnectBindPort Tests', ->
     .fail (err) -> reject err
 
 
-  it 'Repeats test, overlayng two connectport', (done) ->
+  it 'Repeats test, overlaying two connectport', (done) ->
     promises = []
     test(connectPortA1_1)
     test(connectPortA1_2)

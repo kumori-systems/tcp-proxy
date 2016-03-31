@@ -1,4 +1,5 @@
 _ = require 'lodash'
+q = require 'q'
 EventEmitter = require('events').EventEmitter
 slaputils = require 'slaputils'
 ProxyTcp  = require('../../src/index').ProxyTcp
@@ -124,7 +125,7 @@ class Duplex extends Channel
           setTimeout () =>
             if role is 'Z'
               @logger.warn 'MOCK getrole simulated error'
-              message.err = new Error 'getrole simulated error'
+              message.err = 'getrole simulated error'
             else
               message.result = role
             message.type = 'getroleresponse'
@@ -162,15 +163,39 @@ class MockComponent extends EventEmitter
     @offerings[name] = @_createChannel(name, data) for name, data of provided
     @dependencies[name] = @_createChannel(name, data) for name, data of required
 
-    @proxyTcp = new ProxyTcp @iid, @role, \
-                             JSON.parse(@parameters.proxyTcp), \
-                             @offerings, @dependencies
-
   run: () -> # for tests, returns a promise
-    @proxyTcp.init()
+    [server, legconfig, channels] = @_computeServerParametersAndChannels()
+    @proxy = new ProxyTcp @iid, @role, channels
+    @proxy.on 'ready', (bindIp) =>
+      @_startLegacyServer server, bindIp, legconfig
+    @proxy.on 'error', (err) =>
+      @_processProxyError err
+    @proxy.on 'change', (data) =>
+      @_reconfigLegacyServer server, bindIp, legconfig, data
+    @proxy.on 'close', () =>
+      @_stopLegacyServer server, legconfig
 
   shutdown: () -> # for tests, returns a promise
-    @proxyTcp.terminate()
+    @proxy.shutdown()
+
+  _computeServerParametersAndChannels: () ->
+    server = null
+    config = null
+    channels = JSON.parse(@parameters.proxyTcp)
+    for name, config of channels
+      config.channel = @_getChannel(name)
+    return [server, config, channels]
+
+  _startLegacyServer: (server, bindIp, legconfig) =>
+    @emit 'ready', bindIp
+
+  _reconfigLegacyServer: (server, bindIp, legconfig, data) =>
+
+  _stopLegacyServer: (server, legconfig) =>
+    @emit 'close'
+
+  _processProxyError: (err) =>
+    throw err
 
   _createChannel: (name, data) ->
     switch data.channel_type
@@ -180,6 +205,11 @@ class MockComponent extends EventEmitter
       when ChanTypes.SEND then return new Send(name, @iid)
       when ChanTypes.RECEIVE then return new Receive(name, @iid)
       else throw new Error "Channel type doesnt exists: #{data.channel_type}"
+
+  _getChannel: (name) ->
+    if @offerings[name] then return @offerings[name]
+    else if @dependencies[name] then return @dependencies[name]
+    else throw new Error "Channel not found: #{name}"
 
 # ------------------------------------------------------------------------------
 

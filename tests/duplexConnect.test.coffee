@@ -33,24 +33,22 @@ describe 'ProxyDuplexConnect Tests', ->
     mockComponentB = new MockComponent 'B_2', 'B', manifestB.configuration, \
                                        manifestB.provided, manifestB.required
     mockComponentB.run()
-    .then () ->
-      proxyDuplexConnect = mockComponentB.proxyTcp.channels['dup2'].proxy
-      dup2 = mockComponentB.proxyTcp.channels['dup2'].channel
+    mockComponentB.once 'ready', (bindIp) ->
+      proxyDuplexConnect = mockComponentB.proxy.channels['dup2'].proxy
+      dup2 = mockComponentB.proxy.channels['dup2'].channel
       done()
-    .fail (err) -> done err
+    mockComponentB.on 'error', (err) -> done(err)
 
 
   after (done) ->
-    done()
     mockComponentB.shutdown()
-    .then () -> done()
-    .fail (err) -> done err
+    mockComponentB.once 'close', () -> done()
 
 
   it 'Sends a message and receives response', (done) ->
     MESSAGETEST = {value1: 'hello', value2: 10}
     MESSAGETESTRESPONSE = {result: 'ok'}
-    bindPort = proxyDuplexConnect.config.port
+    bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].port
     ephimeralPort = 5001
     msg1 = {
       type: 'bindOnConnect',

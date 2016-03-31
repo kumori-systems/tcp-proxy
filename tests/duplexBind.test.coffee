@@ -8,7 +8,7 @@ MockComponent = require('./mock/mock').MockComponent
 manifestA = require './manifests/A.json'
 
 
-describe 'ProxyDuplexBind Tests', ->
+describe 'DuplexBind Tests', ->
 
 
   parser = new slaputils.JsonParser()
@@ -21,8 +21,8 @@ describe 'ProxyDuplexBind Tests', ->
 
 
   before (done) ->
-    slaputils.setLoggerOwner 'ProxyDuplexBindTest'
-    logger = slaputils.getLogger 'ProxyDuplexBindTest'
+    slaputils.setLoggerOwner 'DuplexBind'
+    logger = slaputils.getLogger 'DuplexBind'
     logger.configure {
       'console-log' : false
       'console-level' : 'debug'
@@ -35,18 +35,16 @@ describe 'ProxyDuplexBind Tests', ->
     mockComponentA = new MockComponent 'A_1', 'A', manifestA.configuration, \
                                        manifestA.provided, manifestA.required
     mockComponentA.run()
-    .then () ->
-      proxyDuplexBind = mockComponentA.proxyTcp.channels['dup1'].proxy
-      dup1 = mockComponentA.proxyTcp.channels['dup1'].channel
+    mockComponentA.once 'ready', (bindIp) ->
+      proxyDuplexBind = mockComponentA.proxy.channels['dup1'].proxy
+      dup1 = mockComponentA.proxy.channels['dup1'].channel
       done()
-    .fail (err) -> done err
+    mockComponentA.on 'error', (err) -> done err
 
 
   after (done) ->
-    done()
     mockComponentA.shutdown()
-    .then () -> done()
-    .fail (err) -> done err
+    mockComponentA.once 'close', () -> done()
 
 
   it 'Add correct members', (done) ->

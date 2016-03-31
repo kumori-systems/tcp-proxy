@@ -1,10 +1,20 @@
 q = require 'q'
 ipUtils = require './ip-utils'
+DuplexConnectPort   = require './duplex-connect-port'
 
+
+# Proxy for duplex 'connect' channels
+#
 class ProxyDuplexConnect
 
 
-  constructor: (@owner, @role, @iid, @channel, @config) ->
+  # Parameters:
+  # @owner: proxytcp container (permits issue events)
+  # @iid: owner instance iid
+  # @role: owner instance role
+  # @channel: duplex channel
+  #
+  constructor: (@owner, @role, @iid, @channel) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}"
     method = "ProxyDuplexConnect.constructor #{@name}"
     @logger.info "#{method}"
@@ -22,10 +32,10 @@ class ProxyDuplexConnect
   terminate: () ->
     method = "ProxyDuplexConnect.terminate #{@name}"
     @logger.info "#{method}"
-    return q.promise (resolve, reject) ->
+    return q.promise (resolve, reject) =>
       promises = []
       promises.push port.terminate() for key, port of @connectPorts
-      q.all(promises).then () -> resolve()
+      q.all(promises).then () => resolve()
 
 
   _onMessage: (segments) =>
@@ -82,8 +92,8 @@ class ProxyDuplexConnect
     return q.promise (resolve, reject) =>
       if @connectPorts[id]? then resolve @connectPorts[id]
       else
-        port = new @config.DuplexConnectPort \
-          @iid, msg.fromInstance, @bindIp, msg.bindPort, msg.connectPort
+        port = new DuplexConnectPort(@iid, msg.fromInstance, @bindIp,\
+                                     msg.bindPort, msg.connectPort)
         port.init()
         .then () =>
           port.on 'connectOnData', @_onConnectData

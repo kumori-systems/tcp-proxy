@@ -6,7 +6,7 @@ index = require('../src/index')
 DuplexBindPort = index.DuplexBindPort
 
 
-describe 'DuplexBindPort Tests', ->
+describe 'BindPort Tests', ->
 
 
   parser = new slaputils.JsonParser()
@@ -17,8 +17,8 @@ describe 'DuplexBindPort Tests', ->
 
 
   before (done) ->
-    slaputils.setLoggerOwner 'DuplexBindPortTest'
-    logger = slaputils.getLogger 'DuplexBindPortTest'
+    slaputils.setLoggerOwner 'BindPort'
+    logger = slaputils.getLogger 'BindPort'
     logger.configure {
       'console-log' : false
       'console-level' : 'debug'
@@ -41,13 +41,15 @@ describe 'DuplexBindPort Tests', ->
 
 
   after (done) ->
-    bindPortB2.terminate()
-    .then () -> bindPortB3.terminate()
+    promises = []
+    promises.push bindPortB2.terminate()
+    promises.push bindPortB3.terminate()
+    q.all promises
     .then () -> done()
     .fail (err) -> done err
 
 
-  it 'Connects tcpclient, send a message and bindport emits it', (done) ->
+  it 'Connects tcpclient, sends a message and bindport emits it', (done) ->
     test(bindPortB2)
     .then () -> done()
     .fail (err) -> reject err
