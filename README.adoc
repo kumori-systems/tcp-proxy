@@ -1,1 +1,744 @@
-TBD
+ProxyTCP
+========
+Juanjo Valero
+v0.0.1, 2016-02-17
+
+
+Introducción: contenido del  manual
+-----------------------------------
+
+=== Adapting Legacy servers: the proxy facility
+
+In the previous section we showed the special case of adapting an existing web
+server. In general, we may have situations in which a component functionality
+is actually provided by an existing server program, expecting access to IP
+networks, and such that it is either costly, impractical or outright impossible
+to carry out any sort of change in their code.
+
+As was the case of a web server, the component should be properly specified,
+with the channels that make sense to how it is to be connected, and
+the configuration needed for semantically consistent set up of the legacy server.
+
+Besides this configuration, however, we will need a way to convert the ip-based
+configuration directly supported by the legacy server to interact with
+other roles within the deployed service.
+
+Just as in the case of the web server, the approach will require the component
+module to act as an adapter, launching the legacy server to interact with the
++localhost+ network interface, through adequate network ports.
+
+Unlike the case of the legacy web server, we now can have an arbitrary protocol
+being spoken by the legacy server, thus we need a ``neutral´´ solution. For
+this case {ecloud} provides a *proxy* module that can be used by the
+adapter/component to tunnel IP protocols through {ecloud} channels transparently
+to the legacy server code.
+
+Unlike the approach in <<s-legacy-web>>, the channel protocol knows nothing
+about the higher level protocol supported by the server, limiting itself to
+ship the bytes being pushed back and forth by legacy pieces of software.
+
+The following shows an example of how to generally set up this kind of legacy
+support.
+
+[source,coffee]
+----
+# component.coffee
+#
+Component   = require 'component'
+gProxy      = require 'proxy'         #<1>
+child       = require 'child-process'
+
+module.exports = class MyComponent extends Component
+  ...
+  run: () ->
+    [server, parameters, channels] = @computeServerParametersAndChannels() #<2>
+
+    @gProxy @iid, @role, channels                    #<3>
+
+    @gProxy.on 'ready', (bindIp) =>                  #<4>
+      @startLegacyServer server, bindIp, parameters
+
+    @gProxy.on 'error', (err) =>                     #<5>
+      @processProxyError err
+
+    @gProxy.on 'change', (data) =>                   #<6>
+      @reconfigLegacyServer server, bindIp, parameters, data
+
+    @gProxy.on 'close', () =>                        #<7>
+      @stopLegacyServer server, parameters
+
+  shutdown: ->
+    @gProxy.shutdown()
+  ...
+----
+
+<1> We now require the generic *proxy* module.
+<2> Assuming method *computeServerParametersAndChannels* returns as in
+    <<s-legacy-web>> the server program and parameters to pass to it. But,
+    in addition, it returns an object relating the component's channels
+    to the legacy server ports/connections/bindings.
+<3> *Proxy* object initialization requires the role and ID of instance, and the
+    relationship of channels (with additional information) to be proxied.
+<4> *Proxy* object issues an event when it is ready to process requests,
+    providing the local IP address to be assigned to the legacy server.
+    For the proper functioning of *proxy*, it must choose the local IP address
+    of the legacy server..
+<5> *Proxy* object issues an event when an error occurs.
+<6> *Proxy* object issues an event, along their life cycle, when any changes,
+    which may involve a reconfiguration of legacy server, occurs.
+<7> *Proxy* object issues an event when is closed (when 'terminate'
+    method is invoked)
+
+While method *computeServerParameters* is straightforward to write, needing
+only to know how to start the legacy server, writing method
+*computeServerParametersAndChannels* will require knowing how to configure
+the *proxy* object too.
+
+==== Configuring the Proxy object
+
+*Proxy* object initialization requires an object relating the component's
+channels to the legacy server ports/connections/bindings.
+
+This object is a dictionary whose key is the channel name, and values contains:
+- Channel itself
+- TCP port to be proxied
+- In case of duplex channels, its operating mode (bind / connect)
+
+An example configuration for a *proxy* (wich proxies six channels) would be:
+
+[source,coffee]
+----
+{
+  'myDuplex1': {
+    channel: myDuplex1,
+    port: 9100,
+    mode: 'bind'
+  },
+  'myDuplex2': {
+    channel: myDuplex2,
+    port: 9200,
+    mode: 'connect'
+  },
+  'myRequest3': {
+    channel: myRequest3,
+    port: 9300
+  },
+  'myReply4': {
+    channel: myReply4,
+    port: 9400
+  },
+  'mySend5': {
+    channel: mySend5,
+    port: 9500
+  },
+  'myRecv6': {
+    channel: myRecv6,
+    port: 9600
+  }
+}
+----
+
+
+==== Change event
+
+*Proxy* object emits a 'change' event, along their life cycle, when any changes,
+which may involve a reconfiguration of legacy server, occurs.
+
+Data associated with this event are different depending on the channel
+that caused it.
+
+[source,coffee]
+----
+@gProxy.on 'change', (data) ->
+  @reconfigLegacyServer server, bindIp, parameters, data
+----
+
+
+Request::
+  When a request channel is proxied, a tcp port is opened in a local IP address.
+  A 'change' event is issued when *proxy* is ready and listening on this port.
+  An event is issued too, when port is closed (this happens when the instance
+  is shutting down, so usually an action on the legacy server is not required).
+  Event data contains parameters that legacy server could need to be
+  reconfigured:
+  - Listening (true / false)
+  - Channel name
+  - IP
+  - Port
+
+For example:
+
+[source,coffee]
+----
+{
+  channel: 'myRequest3',
+  listening: true,
+  ip: ip:'127.0.0.7',
+  port: 9300
+}
+----
+
+
+Reply::
+  Never issues 'change' events.
+
+Send::
+  This event is issued in the same cases as Request channel, and provides the
+  same data.
+
+Receive::
+  Never issues 'change' events.
+
+Duplex::
+  When the set of instances attached to the _complete_ connector (duplex
+  channels) changes, *proxy* issues a 'change' event.
+  Event data is a list of current members with the information that the legacy
+  server could need to be reconfigured:
+  - Channel name
+  - Instance ID
+  - IP
+  - Port
+
+For example:
+
+[source,coffee]
+----
+{
+  channel: 'myDuplex1',
+  members: [
+    {iid:'A_10', ip:'127.0.0.7', port:9100},
+    {iid:'A_11', ip:'127.0.0.8', port:9100},
+    {iid:'A_12', ip:'127.0.0.9', port:9100}
+  ]
+]
+----
+
+
+Descripción
+-----------
+
+Tenemos varios elementos legacy (A, B, C...).
+En un despliegue "legacy", podríamos tener varias replicas de cada elemento, que se comunican entre ellos a través de TCP, organizados según una cierta topología.
+
+A la hora de realizar el despliegue en SLAP, cada una de esas replicas estará alojada en una instancia de un componente (A1, A2, B1, ...).
+
+La topología entre los elementos legacy, la trasladamos a una topología entre componentes SLAP, vía canales.
+Allá donde tengamos una potencial conexión TCP entre un elemento A y B, estableceremos un conector entre sus respectivos componentes.
+Es decir: si el elemento A puede conectarse a un puerto del elemento B, entonces tendremos un conector (y sus respectivos canales) entre los componentes A y B.
+Usaremos un conector u otro en función de las propiedades de la comunicación entre A y B.
+
+
+Clase ProxyTcp
+--------------
+
+Todo componente SLAP qué contenga elementos legacy, y que por tanto necesite "proxificar" sus comunicación TCP a través de canales SLAP, deberá instanciar un objeto ProxyTcp:
+- Proporcionándole la lista de canales a proxificar
+- Proporcionándole los parametros que cada canal necesita para su proxificación (básicamente, el puerto tcp)
+- Atender los eventos que el objeto ProxyTcp emite, que normalmente implicarán acciones sobre el elemento legacy (a realizar por parte del componente).
+
+Realmente el objeto ProxyTcp será un contenedor de objetos, cada uno de los cuales se encarga de gestionar un canal:
+- ProxyDuplexBind
+- ProxyDuplexConnect
+- ProxyRequest
+- ProxyReply
+- ProxySend
+- ProxyReceive
+
+ProxyTcp emite 3 eventos, que el el componente debe atender:
+- Evento 'ready', junto con la IP local que el elemento legacy debe utilizar para abrir puertos. Este evento se produce cuando el proxytcp ya está inicializado.
+- Evento 'close', cuando el proxytcp se ha cerrado.
+- Evento 'error', si se produce algún error.
+
+Ejemplo de código:
+
+[source,coffee]
+----
+Component   = require 'component'
+gProxy      = require 'proxy'
+child       = require 'child-process'
+module.exports = class MyComponent extends Component
+  ...
+  run: () ->
+    [server, parameters, channels] = @computeServerParametersAndChannels()
+
+    @gProxy @iid, @role, channels
+    @gProxy.init()
+
+    @gProxy.on 'ready', (bindIp) ->
+      @startLegacyServer server, bindIp, parameters
+
+    @gProxy.on 'error', (err) ->
+      @processProxyError err
+
+    @gProxy.on 'change', (data) ->
+      @reconfigLegacyServer server, bindIp, parameters, data
+
+    @gProxy.on 'close', () ->
+      @closeLegacyServer server, parameters
+
+  shutdown: ->
+    @gProxy.terminate()
+----
+
+La variable 'channels', proporcionada al proxytcp, debe ser un dicionario que contenga tanto los canales como la configuración necesaria para su proxificación. Por ejemplo.
+
+[source]
+----
+{
+  'dup1': {
+    channel: dup1,
+    port: 9100,
+    mode: 'bind'
+  },
+  'req1': {
+    channel: req1,
+    port: 9300
+  }
+}
+----
+
+
+Conector STAR
+-------------
+
+Supongamos que el legacy-A debe conocer qué legacy-B existen, ya que es susceptible de establecer conexión con cualquiera de ellos (tal vez con uno, tal vez con varios). Es decir: es el código legacy el que decide a qué elemento concreto de B conectarse: implementa todo el protocolo de comunicación.
+
+En este caso, usaremos star+dúplex:
+
+[source]
+----
+A-->(dup1)-->star1-->(dup2)-->B
+----
+
+Cada instancia de A conoce qué instancias de B existen (vía getMembership/changeMembership).
+Cada instancia de B conoce qué instancias de A existen (por el mismo mecanismo), aunque no lo va a necesitar.
+Cada instancia de A y B tiene asignada una IP de loopback (127.0.0.2, 127.0.0.3...), y cualquier instancia puede conocer la IP asignada a cualquier otra instancia (la IP se obtiene a partir del iid, en una relación uno-a-uno).
+Cada instancia de A y B necesita conocer el puerto TCP que utiliza en la comunicación.
+
+
+
+Componente A
+~~~~~~~~~~~~
+
+El manifiesto de A podrá ser algo así (el cliente-programador tiene libertada para implementarlo como prefiera):
+
+[source]
+----
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "legacy": {
+      ...
+    },
+    "proxyTcp": {
+      "dup1": {
+        "port": 80,
+        "mode": "bind"
+      }
+    }
+  },
+  "provided":{},
+  "required":{
+    "dup1": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+----
+
+Las instancias de A, asociado al canal dup1 (bind/80), tendrán un objeto "ProxyDuplexBind".
+Dicho objeto tendrá una lista objetos BindPort: uno por cada instancia de B existente.
+Estos BindPort son objetos que "suplantan" a las instancias de B, y que abren un puerto tcp en:
+  - bind-ip: la IP asignada (calculable) a la instancia B.
+  - bind-port: el indicado en configuración
+
+Los objetos BindPort existen en función de la membresía del conector star1.
+Por defecto, A asume que debe crear BindPort cuando se añaden a STAR nuevas instancias cuyo role NO sea A (A no tiene información acerca de cuál es el role de las instancias con las que se comunica).
+
+
+El componente A recibiá un evento por parte de ProxyTcp, cuando haya algún cambio en la membresía del conector STAR.
+El evento contiene:
+  - Channel name
+  - Instance ID
+  - IP
+  - Port
+
+Por ejemplo:
+
+[source,coffee]
+----
+{
+  channel: 'myDuplex1',
+  members: [
+    {iid:'A_10', ip:'127.0.0.7', port:9100},
+    {iid:'A_11', ip:'127.0.0.8', port:9100},
+    {iid:'A_12', ip:'127.0.0.9', port:9100}
+  ]
+]
+----
+
+El objeto ProxyDuplexBind convierte las acciones a nivel TCP en mensajes slap:
+- Establecimiento de una conexión A->B
+- Envío de datos A->B
+- Cierre de conexión por parte de A
+
+
+Componente B
+~~~~~~~~~~~~
+
+El manifiesto de B será:
+
+[source]
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "legacy": {
+      ...
+    },
+    "proxyTcp": {
+      "dup2": {
+        "port": 80,
+        "mode": "connect"
+      }
+    }
+  },
+  "provided":{
+  },
+  "required":{
+    "dup2": {}
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+
+
+Las instancias de B, asociado al canal dup2 (connect/80), tendrán un objeto "ProxyDuplexConnect".
+Dicho objeto tendrá un objeto ConnectPort cada vez que reciba un mensaje de "establecimiento de una conexión A->B" (y que ocurrirá cuando una instancia de A establezca conexión con el objeto "suplantador" de B). De forma equivalente, estos objetos ConnectPort se eliminan cuando B cierra la conexión TCP, o al recibir un mensaje "Cierre de conexión por parte de A".
+
+Cada objeto ConnectPort almacena:
+  - el iid de la instancia A,
+  - el puerto efímero usado en la conexión establecida por A.
+Los objetos ConnectPort existen en función de las conexiones que crean los elementos A.
+
+El objeto ProxyDuplexConnect convierte las acciones a nivel TCP en mensajes slap:
+- Envío de datos B->A
+- Cierre de conexión por parte de B
+
+
+Asignación de IPs
+~~~~~~~~~~~~~~~~~
+
+Cada vez que añadimos un BindPort a un objeto ProxyDuplexBind, entonces debemos elegir la IP sobre la que hacemos el bind.
+Para que todas las instancias tengan la misma visión de "dónde está cada elemento legacy" (mejor dicho: dónde está cada elemento "suplantador"), entonces calculamos una IP de loopback en función del ID de la instancia.
+Estas IP de loopback estarán en el rango 127.0.0.2 - 127.0.255.254 (disponibles 65533 direcciones)
+
+Asumimos que el ID de una instancia se compone como:
+  role_contadordespliegues_contadorinstancias
+
+El contador de instancias tendrá valores en el rango [0..65532], y no podrán repetirse dentro de un mismo despliegue. SLAP irá asignando IPs de forma rotatoria, "saltándose" aquellos que estén ocupados.
+
+Nota: en una primera fase, usaremos el formato actual de ID: role_contadorglobal
+
+
+
+Conector LoadBalancer
+---------------------
+
+Supongamos que, por las propiedades de A y B:
+- A solo puede ser configurado para conectarse a un elemento B.
+- Sin embargo, es factible meter un balanceador en medio (un balanceador genérico), que reparta las peticiones de A entre varios elementos B. (configuramos A para que se conecte al balanceador, y no directamente a B)
+- A y B admiten un balanceador round-robin, y no exige stickiness.
+
+
+En este caso, usaremos LB+req/rep:
+
+[source]
+----
+A-->(req1)-->LB1-->(rep1)-->B
+----
+
+Las instancias de A no conocen qué instancias de B existen, ni a cuál están llegando sus peticiones.
+Las instancias de B no conocen qué instancias de A existen, ni de cuál están llegando las peticiones.
+
+
+
+Componente A
+~~~~~~~~~~~~
+
+El manifiesto de A será:
+
+[source]
+----
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "req1": {
+          "port": 90,
+          "mode": "connect"
+        }
+      }
+    }
+  },
+  "provided":{
+  },
+  "required":{
+    "req1":{
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+----
+
+Las instancias de A, asociado al canal req1, tendrán un objeto "ProxyRequest".
+ProxyRequest abre (bind) el puerto configurado (90), en una IP de loopback que asociamos al canal req1.
+
+La IP de loopback la elegimos en el rango 127.1.0.1 - 127.1.255.255 (disponibles 65534).
+Esta asignación es local a la instancia (pueden repetirse en otras instancias).
+
+Este ProxyRequest suplanta al componente B (o dicho de otra forma: suplanta a todas las instancias de B), y existe independientemente de que realmente existan o no instancias de B.
+
+El componente A invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, shutdown)
+- Role de la instancia
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto "ProxyRequest" convierte las acciones a nivel TCP en mensajes slap:
+- Envío de peticiones A->B
+- No se notifica el establecimiento/cierre de conexiones.
+
+
+
+Componente B
+~~~~~~~~~~~~
+
+El manifiesto de B será:
+
+[source]
+----
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "rep1": {
+          "port": 90,
+          "mode": "bind"
+        }
+      }
+    }
+  },
+  "provided":{
+    "rep1":{
+      "channel_type":"slap://slapdomain/endpoints/reply",
+      "protocol": {}
+    }
+  },
+  "required":{
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+----
+
+Las instancias de B, asociado al canal rep1, tendrán un objeto ProxyReply.
+
+Cada vez que una instancia de A envíe una petición a su "B", ésta llegará al ProxyReply de alguna instancia de B.
+Esta petición incluirá tanto la petición original, como una cabecera con el puerto TCP de conexión (puerto efímero) utilizado por el elemento A. Esto es neceario para trabajar con la posibilidad de que A establezca varias conexiones simultáneas.
+
+En ese momento, ProxyReply creará un objeto "connectport" que:
+- Crea la conexión con el elemento legacy B.
+- Envía la petición al elemento legacy B,
+- Espera la respuesta, que devuelve (o vencerá un timeout)
+- Cierra la conexión.
+
+
+El componente B invocará a legacy.js en varios momentos, proporcionándole:
+- Causa (run, update, shutdown)
+- Role de la instancia
+- El bind-port (90)
+- La bind-ip asociada a la instancia
+Con esta información, legacy.js debe ser capaz de inferir qué acciones debe realizar sobre el elemento legacy.
+
+
+El objeto ProxyDuplexConnect convierte las acciones a nivel TCP en mensajes slap:
+- Envío de respuestas B->A
+
+
+
+Asignación de IPs
+~~~~~~~~~~~~~~~~~
+
+Los elementos B, tendrán asociada una bind-ip calculada tal y como se ha indicado para el conector star.
+Lo que estamos haciendo es asociar inequívocamente UNA ip a cada instancia.
+
+Los objetos proxyrequest también necesitan un bind-ip.
+En este caso NO nos importa ser coherentes respecto a otras instancias.
+Cada instancia irá asignado incrementalmente direcciones del rango 127.1.0.1 - 127.1.255.255 (65534 IPs).
+
+
+
+CONECTOR PUBSUB
+---------------
+
+Pendiente.
+
+[source]
+----
+A-->(send1)-->PS-->(recv1)-->B
+----
+
+Supongamos que A publica mensajes, y que B los recibe (suscribe).
+
+Si el mecanismo de publicación/suscripción está DENTRO de A y B, entonces podemos proxificar estos elementos usando el conector START.
+
+PERO: supongamos que A y B delegan el mecanimo de publicación/suscripción en algún "broker-legacy".
+En este caso, podemos ELIMINAR dicho broker, si A y B usan un conector STAR.
+Esto no es transparente para A y B: al fin y al cabo será como si utilizaran un nuevo "broker-legacy", con su propio interfaz.
+
+
+Puede haber varios componentes publicadores y varios componentes suscriptores (PUBSUB lo permite).
+
+En el publicador, tendremos un objeto proxysend.
+Este proxysend puede trabajar de 2 formas, dependiendo de cómo sea el legacy: bind o connect.
+En cualquier de los 2 casos, haremos lo mismo: para cada tcp.read() en el proxysend, realizaremos un "send" por el canal
+
+Èn el suscriptor, tendremos un objeto proxyrecv.
+Este proxysend puede trabajar de 2 formas, dependiendo de cómo sea el legacy: bind o connect.
+En cualquier de los 2 casos, haremos lo mismo: cada vez que recibamos algo por el canal, generaremos un TCP.write().
+
+¿Y como integro aquí los topics?
+Necesariamente algo habrá que hacer en la parte legacy (tal y como tendrían que hacer si cambiaran de broker-legacy).
+
+
+
+EJEMPLO DE MANIFIESTOS
+----------------------
+
+Componentes A y B.
+Son componentes legacy que se relacionan al mismo tiempo de 3 formas:
+
+[source]
+----
+A-->(dup1)-->star1-->(dup2)-->B   (puerto 80)
+A-->(req1)-->LB1-->(rep1)-->B     (puerto 90)
+A-->(send1)-->PS-->(recv1)-->B    (puerto 70)
+----
+
+[source]
+----
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup1": {
+          "port": 80,
+          "mode": "connect"
+        },
+        "req1": {
+          "port": 90,
+          "mode": "connect"
+        },
+        "send1": {
+          "port": 70,
+          "mode": "connect"
+        }
+      }
+    }
+  },
+  "provided":{
+    "send1":{
+      "channel_type":"slap://slapdomain/endpoints/send",
+      "protocol": {}
+    }
+  },
+  "required":{
+    "req1":{
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    },
+    "dup1": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+----
+
+[source]
+----
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/B/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": {
+      "legacyScript": "scripts/legacy.js",
+      "channels": {
+        "dup2": {
+          "port": 80,
+          "mode": "bind"
+        },
+        "rep1": {
+          "port": 90,
+          "mode": "bind"
+        },
+        "recv1": {
+          "port": 70,
+          "mode": "bind"
+        }
+      }
+    }
+  },
+  "provided":{
+    "rep1":{
+      "channel_type":"slap://slapdomain/endpoints/reply",
+      "protocol": {}
+    }
+  },
+  "required":{
+    "dup2": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    },
+    "recv1": {
+      "channel_type": "slap://slapdomain/endpoints/receive",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
+----

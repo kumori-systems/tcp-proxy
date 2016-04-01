@@ -1,0 +1,19 @@
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": "{\"chan\":{\"port\":8000,\"mode\":\"connect\"}}"
+  },
+  "provided":{
+  },
+  "required":{
+    "chan":{
+      "channel_type":"slap://slapdomain/endpoints/not_exist_type",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}

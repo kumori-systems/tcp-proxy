@@ -1,0 +1,31 @@
+{
+  "spec":"slap://slapdomain/manifests/component/0_0_1",
+  "name":"slap://sampleservice/components/A/0_0_1",
+  "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
+  "code":"",
+  "configuration":{
+    "proxyTcp": "{\"dup1\":{\"port\":8000,\"mode\":\"bind\"},\"req1\":{\"port\":9000},\"send1\":{\"port\":7000}}"
+  },
+  "provided":{
+    "send1":{
+      "channel_type":"slap://slapdomain/endpoints/send",
+      "protocol": {}
+    }
+  },
+  "required":{
+    "dup1": {
+      "channel_type":"slap://slapdomain/endpoints/duplex",
+      "protocol": {}
+    },
+    "req1":{
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    },
+    "noproxychannel": {
+      "channel_type":"slap://slapdomain/endpoints/request",
+      "protocol": {}
+    }
+  },
+  "external":"TBD",
+  "profile":"TBD"
+}
