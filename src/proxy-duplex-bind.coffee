@@ -12,6 +12,7 @@ GETROLE_TIMEOUT = 10000
 class ProxyDuplexBind
 
 
+  # Constructor
   # Parameters:
   # @owner: proxytcp container (permits issue events)
   # @iid: owner instance iid
@@ -20,8 +21,8 @@ class ProxyDuplexBind
   # @port: legacy bind tcp port
   #
   constructor: (@owner, @role, @iid, @channel, @port) ->
-    @name = "#{@role}/#{@iid}/#{@channel.name}"
     method = 'ProxyDuplexBind.constructor'
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
     @logger.info "#{method} #{@name}"
     @bindPorts = {}
     @currentMembership = [] # List of IID

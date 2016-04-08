@@ -1,6 +1,5 @@
 EventEmitter        = require('events').EventEmitter
 q                   = require 'q'
-_                   = require 'lodash'
 ipUtils             = require './ip-utils'
 ProxyDuplexBind     = require './proxy-duplex-bind'
 ProxyDuplexConnect  = require './proxy-duplex-connect'

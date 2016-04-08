@@ -38,22 +38,23 @@ class Request extends Channel
     @messageReply = null
     @dynChannels = {}
 
-  sendRequest: (message) ->
+  sendRequest: ([message], [dynReplyChannel]) ->
     @logger.debug "MOCK Request #{@name} SendRequest #{message}"
     return q.promise (resolve, reject) =>
       header = JSON.parse message[0]
       data = message[1]
       switch header.type
         when 'connect'
+          dynRepChannel =
           @logger.debug "MOCK Request #{@name} connect received"
           if @dynChannels[header.fromInstance]?
-            dynChannel = @dynChannels[header.fromInstance]
+            dynReqChannel = @dynChannels[header.fromInstance]
           else
-            dynChannel = new Request("#{@name}_#{header.fromInstance}", @iid)
-            dynChannel.messageReply = @messageReply
-            @dynChannels[header.fromInstance] = dynChannel
-          @logger.debug "MOCK Request #{@name} return #{dynChannel.name}"
-          reply = [[@parser.encode({result: 'ok'})]].concat([[dynChannel]])
+            dynReqChannel = new Request("#{@name}_#{header.fromInstance}", @iid)
+            dynReqChannel.messageReply = @messageReply
+            @dynChannels[header.fromInstance] = dynReqChannel
+          @logger.debug "MOCK Request #{@name} return #{dynReqChannel.name}"
+          reply = [[@parser.encode({result: 'ok'})]].concat([[dynReqChannel]])
           resolve reply
         when 'disconnect'
           @logger.debug "MOCK Request #{@name} disconnect received"

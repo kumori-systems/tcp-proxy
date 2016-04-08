@@ -15,9 +15,9 @@ class ProxyDuplexConnect
   # @channel: duplex channel
   #
   constructor: (@owner, @role, @iid, @channel) ->
-    @name = "#{@role}/#{@iid}/#{@channel.name}"
     method = "ProxyDuplexConnect.constructor #{@name}"
-    @logger.info "#{method}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}"
+    @logger.info "#{method} #{@name}"
     @bindIp = ipUtils.getIpFromIid(@iid)
     @connectPorts = {}
 
