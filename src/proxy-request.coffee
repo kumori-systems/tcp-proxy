@@ -17,12 +17,11 @@ class ProxyRequest
   # @owner: proxytcp container (permits issue events)
   # @iid: owner instance iid
   # @role: owner instance role
-  # @channel: duplex channel
-  # @port: legacy bind tcp port
+  # @channel: request channel to be proxified
+  # @port: legacy tcp port
   #
-  constructor: (@owner, @role, @iid, @channel, @config) ->
+  constructor: (@owner, @role, @iid, @channel, @bindPort) ->
     method = 'ProxyRequest.constructor'
-    @bindPort = @config.port
     @bindIp = ipUtils.getIpFromPool() # selects a local IP (127.1.x.x)
     @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
     @logger.info "#{method} #{@name}"
@@ -50,7 +49,7 @@ class ProxyRequest
       @tcpServer = net.createServer().listen(@bindPort, @bindIp)
 
       @tcpServer.on 'listening', () =>
-        @logger.info "#{method} tcpserver event onListen (#{@bindIp}:#{@bindPort})"
+        @logger.info "#{method} tcpserver onListen (#{@bindIp}:#{@bindPort})"
         binded = true
         @owner.emit 'change', {
           channel: @channel.name,
@@ -61,7 +60,7 @@ class ProxyRequest
         resolve()
 
       @tcpServer.on 'error', (err) =>
-        @logger.error "#{method} tcpserver event onError #{err.stack}"
+        @logger.error "#{method} tcpserver onError #{err.stack}"
         if not binded
           reject err
         else
@@ -69,7 +68,7 @@ class ProxyRequest
           @tcpServer.close()
 
       @tcpServer.on 'close', () =>
-        @logger.info "#{method} tcpserver event onClose"
+        @logger.info "#{method} tcpserver onClose"
         @tcpServer = null
         @owner.emit 'change', {
           channel: @channel.name,
@@ -79,7 +78,7 @@ class ProxyRequest
         }
 
       @tcpServer.on 'connection', (socket) =>
-        @logger.info "#{method} tcpserver event onConnection"
+        @logger.info "#{method} tcpserver onConnection"
         @_processConnection socket
 
 
@@ -101,27 +100,9 @@ class ProxyRequest
     method = "ProxyRequest._processConnection #{@name}"
     connectPort = socket.remotePort
     @logger.debug "#{method} port:#{connectPort}"
+
+    # Create a dynRequest and dynReply for this connection
     dynReply = @channel.runtimeAgent.createChannel()
-    dynRequestPromise = @_sendConnect(connectPort, dynReply)
-    @connections[connectPort] =
-      socket: socket
-      dynReply: dynReply
-      dynRequest: null # fill pending (dynRequestPromise)
-      dynRequestPromise: dynRequestPromise
-
-    # Tcp events
-    socket.on 'data', (data) => @_onTcpData(data, connectPort)
-    socket.on 'end', () => @_onTcpEnd(connectPort)
-    socket.on 'error', (err) =>
-      @logger.error "#{method} event:onError #{err.stack}"
-      socket.end()
-    socket.on 'timeout', () =>
-      @logger.error "#{method} event:onTimeout"
-      socket.end()
-    socket.on 'close', () =>
-      @logger.debug "#{method} event:onClose"
-
-    # Channel events
     dynReply.handleRequest = (request) =>
       header = @parser.decode(request[0])
       if header.type is 'data'
@@ -132,6 +113,24 @@ class ProxyRequest
         err = new Error("Unexpected request type=#{header.type}")
         @logger.error "#{method} err:#{err.message}"
         q(err)
+    dynRequestPromise = @_sendConnect(connectPort, dynReply)
+    @connections[connectPort] =
+      socket: socket
+      dynReply: dynReply
+      dynRequest: null # fill pending (dynRequestPromise)
+      dynRequestPromise: dynRequestPromise
+
+    # Tcp events for this connection
+    socket.on 'data', (data) => @_onTcpData(data, connectPort)
+    socket.on 'end', () => @_onTcpEnd(connectPort)
+    socket.on 'error', (err) =>
+      @logger.error "#{method} event:onError #{err.stack}"
+      socket.end()
+    socket.on 'timeout', () =>
+      @logger.error "#{method} event:onTimeout"
+      socket.end()
+    socket.on 'close', () =>
+      @logger.debug "#{method} event:onClose"
 
 
   # Tcp-connection receives new data.
@@ -178,7 +177,7 @@ class ProxyRequest
   # Tcp-connection receives a disconnect.
   # Disconnect must be sended through dynamic request channel.
   #
-  _onTcpEnd: (connectPort, connectPort) =>
+  _onTcpEnd: (connectPort) =>
     method = "ProxyRequest._onTcpEnd #{@name} port:#{connectPort}"
     @logger.debug "#{method}"
     if @connections[connectPort]?
@@ -204,12 +203,13 @@ class ProxyRequest
   _onChannelEnd: (header, connectPort) ->
     method = "ProxyRequest._onChannelEnd #{@name} port:#{connectPort}"
     @logger.debug "#{method}"
-    try
-      @connections[header.connectPort]?.socket?.end()
-      resolve [{}] # Its just an ACK
-    catch err
-      @logger.error "#{method} catch error: #{err.stack}"
-      reject err
+    return q.promise (resolve, reject) =>
+      try
+        @connections[header.connectPort]?.socket?.end()
+        resolve [{}] # Its just an ACK
+      catch err
+        @logger.error "#{method} catch error: #{err.stack}"
+        reject err
 
 
   # Sends dynReply to its proxy-pair.

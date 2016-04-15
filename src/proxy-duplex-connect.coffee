@@ -15,9 +15,9 @@ class ProxyDuplexConnect
   # @channel: duplex channel
   #
   constructor: (@owner, @role, @iid, @channel) ->
-    method = "ProxyDuplexConnect.constructor #{@name}"
     @name = "#{@role}/#{@iid}/#{@channel.name}"
-    @logger.info "#{method} #{@name}"
+    method = "ProxyDuplexConnect.constructor #{@name}"
+    @logger.info "#{method}"
     @bindIp = ipUtils.getIpFromIid(@iid)
     @connectPorts = {}
 
@@ -35,7 +35,7 @@ class ProxyDuplexConnect
     return q.promise (resolve, reject) =>
       promises = []
       promises.push port.terminate() for key, port of @connectPorts
-      q.all(promises).then () => resolve()
+      q.all(promises).then () -> resolve()
 
 
   _onMessage: (segments) =>

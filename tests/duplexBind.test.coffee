@@ -2,9 +2,11 @@ net = require 'net'
 slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
+
 index = require('../src/index')
 ProxyDuplexBind = index.ProxyDuplexBind
-MockComponent = require('./mock/mock').MockComponent
+
+MockComponent = require('./mock/mockComponent')
 manifestA = require './manifests/A.json'
 
 
@@ -32,6 +34,9 @@ describe 'DuplexBind Tests', ->
       'vm' : ''
       'auto-method': true
     }
+
+    MockComponent.useThisChannels('mockChannels_testDuplex')
+
     mockComponentA = new MockComponent 'A_1', 'A', manifestA.configuration, \
                                        manifestA.provided, manifestA.required
     mockComponentA.run()

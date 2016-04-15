@@ -21,9 +21,9 @@ class ProxyDuplexBind
   # @port: legacy bind tcp port
   #
   constructor: (@owner, @role, @iid, @channel, @port) ->
-    method = 'ProxyDuplexBind.constructor'
-    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
-    @logger.info "#{method} #{@name}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@port}"
+    method = "ProxyDuplexBind.constructor #{@name}"
+    @logger.info "#{method}"
     @bindPorts = {}
     @currentMembership = [] # List of IID
     @changeMemberSemaphore = new Semaphore()

@@ -1,32 +1,3 @@
-q = require 'q'
-
-
-class ProxyReply
-
-
-  constructor: (@owner, @role, @iid, @channel) ->
-    method = 'ProxyReply.constructor'
-    @logger.info "#{method} role=#{@role},iid=#{@iid},\
-                  channel=#{@channel.name}"
-
-
-  init: () ->
-    method = 'ProxyReply.init'
-    @logger.info "#{method}"
-    return q.promise (resolve, reject) -> resolve()
-
-
-  terminate: () ->
-    method = 'ProxyReply.terminate'
-    @logger.info "#{method}"
-    return q.promise (resolve, reject) -> resolve()
-
-
-module.exports = ProxyReply
-
-
-###
-
 net = require 'net'
 q = require 'q'
 ipUtils = require './ip-utils'
@@ -41,16 +12,17 @@ class ProxyReply
 
 
   # Constructor
-  # - owner: ProxyTcp object that contains ProxyReply (and other proxys)
-  # - role and iid of instance
-  # - channel: reply channel used in "proxyfication"
-  # - config: port
+  # Parameters:
+  # @owner: proxytcp container (permits issue events)
+  # @iid: owner instance iid
+  # @role: owner instance role
+  # @channel: reply channel to be proxified
+  # @port: legacy tcp port
   #
-  constructor: (@owner, @role, @iid, @channel, @config) ->
-    @bindPort = @config.port
+  constructor: (@owner, @role, @iid, @channel, @bindPort) ->
+    method = 'ProxyReply.constructor'
     @bindIp = ipUtils.getIpFromPool() # selects a local IP (127.1.x.x)
     @connectOptions = {host: @bindIp, port: @bindPort}
-    method = 'ProxyReply.constructor'
     @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
     @logger.info "#{method} #{@name}"
 
@@ -78,11 +50,13 @@ class ProxyReply
     #     }
     #   }
     @connections = {}
+    @connectionsBySocket = {}
 
     @channel.handleRequest = @_handleRequest
 
 
-  # Returns a promise always solved
+  # Returns a promise, always solved (nothing to do)
+  # (promise is an interface requirement)
   #
   init: () ->
     method = "ProxyReply.init #{@name}"
@@ -90,8 +64,8 @@ class ProxyReply
     q()
 
 
-  # Close current connections
-  # Returns a promise always solved
+  # Close current connections.
+  # Returns a promise, always solved.
   #
   terminate: () ->
     method = "ProxyReply.terminate #{@name}"
@@ -116,13 +90,13 @@ class ProxyReply
   # - Creates a dynReply channel, used with dynRequest channel received, for
   #   exchange data
   #
-  _handleRequest: (request) =>
+  _handleRequest: ([header], [dynRequest]) =>
     method = "ProxyReply._handleRequest #{@name}"
     @logger.debug "#{method}"
 
     return q.promise (resolve, reject) =>
       try
-        header = @parser.decode(request[0])
+        header = @parser.decode(header)
         if header.type isnt 'connect'
           reject new Error("Unexpected request type=#{header.type}")
         else
@@ -138,20 +112,21 @@ class ProxyReply
           socket.once 'connect', () =>
             method = "#{method} port:#{connectPort}"
             socket.removeListener 'error', onConnectError
-
-            dynRequest = request[1]
             dynReply = @channel.runtimeAgent.createChannel()
 
             if not @connections[iid]? then @connections[iid] = {}
             @connections[iid][connectPort] = {
+              iid: iid
+              connectPort: connectPort
               socket: socket
               dynRequest: dynRequest
               dynReply: dynReply
             }
+            @connectionsBySocket[socket.localPort] = @connections[iid][connectPort]
 
             # Tcp events
-            socket.on 'data', (data) => @_onTcpData(data, connectPort)
-            socket.on 'end', () => @_onTcpEnd(connectPort)
+            socket.on 'data', (data) => @_onTcpData(data, connectPort, socket)
+            socket.on 'end', () => @_onTcpEnd(connectPort, socket)
             socket.on 'error', (err) =>
               @logger.error "#{method} event:onError #{err.stack}"
               socket.end()
@@ -162,12 +137,13 @@ class ProxyReply
               @logger.debug "#{method} event:onClose"
 
             # Channel events
-            dynReply.handleRequest = (request) =>
-              header = @parser.decode(request[0])
+            parent = @
+            dynReply.handleRequest = ([header, data]) ->
+              header = @parser.decode(header)
               if header.type is 'data'
-                @_onChannelData(header, request[1])
+                parent._onChannelData(header, data)
               else if header.type is 'disconnected'
-                @_onChannelEnd(header)
+                parent._onChannelEnd(header)
               else
                 err = new Error("Unexpected request type=#{header.type}")
                 @logger.error "#{method} err:#{err.message}"
@@ -183,33 +159,34 @@ class ProxyReply
   # Tcp-connection receives new data.
   # Data must be sended through dynamic request channel.
   #
-  _onTcpData: (data, connectPort) =>
+  _onTcpData: (data, connectPort, socket) =>
     method = "ProxyReply._onTcpData #{@name}"
     @logger.debug "#{method} port:#{connectPort}"
-    if not @connections[connectPort]?
-      @logger.error "#{method} connection not found"
-    else
-      @_getCurrentDynRequest(connectPort)
-      .then (dynRequest) =>
-        dynRequest.sendRequest [
-          @parser.encode(@_createMessageHeader('data', connectPort)),
-          data
-        ]
-      .then (reply) =>
-        # It's just an ACK response
-        status = @parser.decode(reply[0][0])
-        if status.result isnt 'ok'
-          @logger.error "#{method} status: #{status.result}"
-          @connections[connectPort]?.socket?.end()
-      .fail (err) =>
-        @logger.error "#{method} err: #{err.stack}"
-        @connections[connectPort]?.socket?.end()
+    console.log "JJJ1 ------------------------------------ #{socket.localPort}"
+    @_getCurrentDynRequest(socket)
+    .then (dynRequest) =>
+      console.log "JJJ3 ------------------------------------"
+      dynRequest.sendRequest [
+        @parser.encode(@_createMessageHeader('data', connectPort)),
+        data
+      ]
+    .then (reply) =>
+      console.log "JJJ4 ------------------------------------ #{reply}"
+      # It's just an ACK response
+      status = @parser.decode(reply[0][0])
+      if status.result isnt 'ok'
+        @logger.error "#{method} status: #{status.result}"
+        socket.end()
+    .fail (err) =>
+      console.log "JJJ5 ------------------------------------"
+      @logger.error "#{method} err: #{err.stack}"
+      socket.end()
 
 
   # Dynamic channel receives new data.
   # Data must be sended through tcp-connection.
   #
-  _onChannelData: (header, data) ->
+  _onChannelData: (header, data, socket) ->
     method = "ProxyReply._onChannelData #{@name}"
     @logger.debug "#{method}"
     return q.promise (resolve, reject) =>
@@ -223,28 +200,67 @@ class ProxyReply
         reject err
 
 
-  # Process a "disconnect-request".
+  # Tcp-connection receives a disconnect.
+  # Disconnect must be sended through dynamic request channel.
   #
-  _handleDisconnected: (header) ->
-    method = "ProxyReply._handleDisconnected #{@name}"
+  _onTcpEnd: (connectPort, socket) =>
+    method = "ProxyReply._onTcpEnd #{@name} port:#{connectPort}"
     @logger.debug "#{method}"
-    try
-      iid = request.fromInstance
-      connectPort = request.connectPort
-      tcpClient = @connections[iid]?.connections[connectPort]
-      if tcpClient?
-        tcpClient.end()
-        delete instance.connections[connectPort]
-        # To improve: remove dynamic channels if an instance doesnt have
-        # connections for long time
-      else
-        @logger.warn "#{method} connections doesnt contains iid=#{iid}, \
-                       connectPort=#{connectPort}"
-    catch err
-      @logger.error "#{method} catch error: #{err.stack}"
+    @_getCurrentDynRequest(socket)
+    .then (dynRequest) =>
+      dynRequest.sendRequest [
+        @parser.encode @_createMessageHeader('disconnect', connectPort)
+      ]
+    .then (reply) =>
+      # It's just an ACK response
+      status = @parser.decode(reply[0][0])
+      if status.result isnt 'ok'
+        @logger.error "#{method} status: #{status.result}"
+    .fail (err) =>
+      @logger.error "#{method} #{err.stack}"
+    .done () =>
+      conn = @connectionsBySocket[socket.localPort]
+      delete @connections[conn.iid][conn.connectPort]
+      delete @connectionsBySocket[socket.localPort]
 
+
+  # Dynamic channel receives a disconnect.
+  # Tcp-connection must be disconnected too.
+  #
+  _onChannelEnd: (header, connectPort) ->
+    method = "ProxyReply._onChannelEnd #{@name} port:#{connectPort}"
+    @logger.debug "#{method}"
+    return q.promise (resolve, reject) =>
+      try
+        @connections[header.connectPort]?.socket?.end()
+        resolve [{}] # Its just an ACK
+      catch err
+        @logger.error "#{method} catch error: #{err.stack}"
+        reject err
+
+
+  # Returns the dynRequest channel that must be used for this connection.
+  #
+  _getCurrentDynRequest: (socket) ->
+    console.log "JJJ2 ------------------------------------"
+    return q.promise (resolve, reject) =>
+      console.log "JJJ2b ------------------------------------ #{socket.localPort}"
+      # dynRequestPromise ensures that dynRequest is ready for use
+      conn = @connectionsBySocket[socket.localPort]
+      console.log "JJJ2c ------------------------------------"
+      if not conn?
+        console.log "JJJ2d ------------------------------------"
+        reject new Error "Connection not found"
+      console.log "JJJ2e ------------------------------------"
+      resolve conn.dynRequest
+
+
+  _createMessageHeader: (type, connectPort) ->
+    return {
+      type: type
+      fromInstance: @iid
+      connectPort: connectPort
+    }
 
 
 module.exports = ProxyReply
-
-###
