@@ -44,7 +44,6 @@ describe 'ProxyRequest Tests', ->
     mockComponentA = new MockComponent 'A_1', 'A', manifestA.configuration, \
                                        manifestA.provided, manifestA.required
     mockComponentA.run()
-
     mockComponentA.once 'ready', (bindIp) ->
       proxyRequest1 = mockComponentA.proxy.channels['req1'].proxy
       req1 = mockComponentA.proxy.channels['req1'].channel
@@ -93,5 +92,3 @@ describe 'ProxyRequest Tests', ->
     setTimeout () ->
       done()
     , 1000
-
-

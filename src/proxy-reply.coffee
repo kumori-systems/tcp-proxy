@@ -126,7 +126,8 @@ class ProxyReply
 
             # Tcp events
             socket.on 'data', (data) => @_onTcpData(data, connectPort, socket)
-            socket.on 'end', () => @_onTcpEnd(connectPort, socket)
+            socket.on 'end', () =>
+              @_onTcpEnd(connectPort, socket)
             socket.on 'error', (err) =>
               @logger.error "#{method} event:onError #{err.stack}"
               socket.end()
@@ -162,24 +163,22 @@ class ProxyReply
   _onTcpData: (data, connectPort, socket) =>
     method = "ProxyReply._onTcpData #{@name}"
     @logger.debug "#{method} port:#{connectPort}"
-    console.log "JJJ1 ------------------------------------ #{socket.localPort}"
-    @_getCurrentDynRequest(socket)
-    .then (dynRequest) =>
-      console.log "JJJ3 ------------------------------------"
+    dynRequest = @_getCurrentDynRequest(socket)
+    if dynRequest?
       dynRequest.sendRequest [
         @parser.encode(@_createMessageHeader('data', connectPort)),
         data
       ]
-    .then (reply) =>
-      console.log "JJJ4 ------------------------------------ #{reply}"
-      # It's just an ACK response
-      status = @parser.decode(reply[0][0])
-      if status.result isnt 'ok'
-        @logger.error "#{method} status: #{status.result}"
-        socket.end()
-    .fail (err) =>
-      console.log "JJJ5 ------------------------------------"
-      @logger.error "#{method} err: #{err.stack}"
+      .then (reply) =>
+        # It's just an ACK response
+        status = reply[0][0]
+        if status.status isnt 'OK'
+          @logger.error "#{method} status: #{status.status}"
+          socket.end()
+      .fail (err) =>
+        @logger.error "#{method} #{err.stack}"
+    else
+      @logger.error "#{method} dynRequest not found"
       socket.end()
 
 
@@ -206,22 +205,24 @@ class ProxyReply
   _onTcpEnd: (connectPort, socket) =>
     method = "ProxyReply._onTcpEnd #{@name} port:#{connectPort}"
     @logger.debug "#{method}"
-    @_getCurrentDynRequest(socket)
-    .then (dynRequest) =>
+    dynRequest = @_getCurrentDynRequest(socket)
+    if dynRequest?
       dynRequest.sendRequest [
         @parser.encode @_createMessageHeader('disconnect', connectPort)
       ]
-    .then (reply) =>
-      # It's just an ACK response
-      status = @parser.decode(reply[0][0])
-      if status.result isnt 'ok'
-        @logger.error "#{method} status: #{status.result}"
-    .fail (err) =>
-      @logger.error "#{method} #{err.stack}"
-    .done () =>
-      conn = @connectionsBySocket[socket.localPort]
-      delete @connections[conn.iid][conn.connectPort]
-      delete @connectionsBySocket[socket.localPort]
+      .then (reply) =>
+        # It's just an ACK response
+        status = @parser.decode(reply[0][0])
+        if status.result isnt 'ok'
+          @logger.error "#{method} status: #{status.result}"
+      .fail (err) =>
+        @logger.error "#{method} #{err.stack}"
+      .done () =>
+        conn = @connectionsBySocket[socket.localPort]
+        delete @connections[conn.iid][conn.connectPort]
+        delete @connectionsBySocket[socket.localPort]
+    #else --> this case isnt an error.
+    #  @logger.error "#{method} dynRequest not found"
 
 
   # Dynamic channel receives a disconnect.
@@ -232,7 +233,10 @@ class ProxyReply
     @logger.debug "#{method}"
     return q.promise (resolve, reject) =>
       try
-        @connections[header.connectPort]?.socket?.end()
+        iid = header.fromInstance
+        connectPort = header.connectPort
+        socket = @connections[iid][connectPort].socket
+        if socket? then socket.end()
         resolve [{}] # Its just an ACK
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
@@ -242,17 +246,7 @@ class ProxyReply
   # Returns the dynRequest channel that must be used for this connection.
   #
   _getCurrentDynRequest: (socket) ->
-    console.log "JJJ2 ------------------------------------"
-    return q.promise (resolve, reject) =>
-      console.log "JJJ2b ------------------------------------ #{socket.localPort}"
-      # dynRequestPromise ensures that dynRequest is ready for use
-      conn = @connectionsBySocket[socket.localPort]
-      console.log "JJJ2c ------------------------------------"
-      if not conn?
-        console.log "JJJ2d ------------------------------------"
-        reject new Error "Connection not found"
-      console.log "JJJ2e ------------------------------------"
-      resolve conn.dynRequest
+    return @connectionsBySocket[socket.localPort]?.dynRequest
 
 
   _createMessageHeader: (type, connectPort) ->

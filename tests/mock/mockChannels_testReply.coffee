@@ -33,12 +33,12 @@ class Request extends Channel
     @runtimeAgent =
       createChannel: () => return new Reply("#{@name}_#{Channel.dynCount++}", \
                                             @iid)
-    @messageReply = null
+    @lastMessageSended = null
     @connections = {}
     @parent = null
 
-  setExpectedReply: (message) ->
-    @messageReply = message
+  getLastMessageSended: () ->
+    return @lastMessageSended
 
   sendRequest: (message, channels) ->
     @logger.debug "MOCK Request #{@name} SendRequest #{message[0]}"
@@ -47,7 +47,8 @@ class Request extends Channel
       switch header.type
 
         when 'data'
-          resolve [@parser.encode({status: 'OK'}), @messageReply]
+          @lastMessageSended = message[1]
+          resolve [ [{status: 'OK'}, null] ]
 
         when 'disconnect'
           resolve()

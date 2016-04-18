@@ -38,8 +38,8 @@ class ProxyDuplexBind
       @channel.on 'message', @_onMessage
       @channel.getMembership()
       .then (members) =>
-        @_onChangeMembership(members)
         resolve()
+        process.nextTick () => @_onChangeMembership(members)
       .fail (err) ->
         reject err
 

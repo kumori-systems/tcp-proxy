@@ -10,7 +10,7 @@ MockComponent = require('./mock/mockComponent')
 manifestB = require './manifests/B.json'
 
 
-describe.only 'ProxyReply Tests', ->
+describe 'ProxyReply Tests', ->
 
 
   parser = new slaputils.JsonParser()
@@ -21,13 +21,14 @@ describe.only 'ProxyReply Tests', ->
 
   proxyReply1 = null
   rep1 = null
+  tcpServer = null
 
 
   before (done) ->
     slaputils.setLoggerOwner 'ProxyReplyTest'
     logger = slaputils.getLogger 'ProxyReplyTest'
     logger.configure {
-      'console-log' : true
+      'console-log' : false
       'console-level' : 'debug'
       'colorize': true
       'file-log' : false
@@ -53,6 +54,7 @@ describe.only 'ProxyReply Tests', ->
   after (done) ->
     mockComponentB.shutdown()
     mockComponentB.once 'close', () -> done()
+    if tcpServer? then tcpServer.close()
 
 
   it 'Sends a request and receive reply', (done) ->
@@ -63,18 +65,19 @@ describe.only 'ProxyReply Tests', ->
         socket.write(parser.encode(MESSAGEREPLY))
       socket.on 'end', () ->
         logger.info "TEST socket.on end"
+      socket.on 'close', () ->
+        logger.info "TEST socket.on close"
       socket.on 'error', (err) ->
         logger.error "TEST socket.on error = #{err.message}"
-      socket.on 'close', () ->
-        logger.warn "TEST socket.on close"
       socket.on 'timeout', () ->
-        logger.warn "TEST ocket.on timeout"
+        logger.warn "TEST socket.on timeout"
 
+    dynRequest = null
+    dynReply = null
     tcpServer.listen proxyReply1.bindPort, proxyReply1.bindIp, () ->
       requestConnect = parser.encode({type: 'connect', fromInstance: 'A_1', \
                        connectPort: 5001})
       dynRequest = new MockComponent.Request('dyn_reply_A_1', 'A_1')
-      dynRequest.setExpectedReply(parser.encode(MESSAGEREPLY))
       rep1.handleRequest [requestConnect], [dynRequest]
       .then () ->
         q.delay(100)
@@ -85,40 +88,19 @@ describe.only 'ProxyReply Tests', ->
         data = parser.encode(MESSAGEREQUEST)
         try
           dynReply.handleRequest [requestData, data]
-          .fail (err) -> done err
+          .then () ->
+            q.delay(500)
+          .then () ->
+            requestDisconnect = parser.encode({type: 'disconnected', \
+                                fromInstance: 'A_1', connectPort: 5001})
+            dynReply.handleRequest [requestDisconnect, null]
+          .then () ->
+            q.delay(500)
+            receivedMessage = parser.decode(dynRequest.getLastMessageSended())
+            receivedMessage.value.should.equal MESSAGEREPLY.value
+          .then () ->
+            done()
+          .fail (err) ->
+            done err
         catch e
           done e
-
-
-
-      ###
-      logger.info "TEST send request connect"
-      dynChannel = null
-      requestConnect = [
-        parser.encode({type: 'connect', fromInstance: 'A_1', connectPort: 5001})
-      ]
-      rep1.deliverMessage(requestConnect)
-      .then (reply) ->
-        dynChannel = reply[1][0]
-        logger.info "TEST send request data (dynchan=#{dynChannel.name})"
-        requestData = [
-          parser.encode({type: 'data', fromInstance: 'A_1', connectPort: 5001}),
-          parser.encode(MESSAGEREQUEST)
-        ]
-        dynChannel.deliverMessage(requestData)
-      .then (reply) ->
-        logger.info "TEST reply received: #{reply}"
-        parser.decode(reply).should.be.eql MESSAGEREPLY
-      .then () ->
-        logger.info "TEST send request disconnected"
-        requestDisconnect = [
-          parser.encode({type: 'requestDisconnect', fromInstance: 'A_1', \
-                        connectPort: 5001}),
-        ]
-        dynChannel.deliverMessage(requestDisconnect)
-      .then () ->
-        done()
-      .fail (err) ->
-        logger.error "TEST fail #{err.message}"
-        done err
-      ###
