@@ -21,7 +21,7 @@ class ProxyReply
   #
   constructor: (@owner, @role, @iid, @channel, @bindPort) ->
     method = 'ProxyReply.constructor'
-    @bindIp = ipUtils.getIpFromPool() # selects a local IP (127.1.x.x)
+    @bindIp = ipUtils.getIpFromIid(@iid)
     @connectOptions = {host: @bindIp, port: @bindPort}
     @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
     @logger.info "#{method} #{@name}"
