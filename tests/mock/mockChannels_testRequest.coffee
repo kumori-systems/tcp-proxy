@@ -61,7 +61,7 @@ class Request extends Channel
             dynRepChannel: dynRepChannel
           }
 
-          reply = [[@parser.encode({result: 'ok'})]].concat([[dynReqChannel]])
+          reply = [[{status: 'OK'}]].concat([[dynReqChannel]])
           resolve reply
 
         when 'data'
@@ -70,10 +70,12 @@ class Request extends Channel
           @logger.debug "MOCK Request #{@name} data received: #{data}"
 
           if (messageReply is null)
-            reject new Error(@parser.encode({status:'Abort', reason:'Timed out'}))
+            reject new Error(@parser.encode({status:'Abort', \
+                                            reason:'Timed out'}))
           else
-            resolve [[ @parser.encode({result: 'ok'}), [] ]]
-            dynRepChannel = @parent.connections[header.connectPort].dynRepChannel
+            resolve [[ {status: 'OK'}, [] ]]
+            dynRepChannel = \
+              @parent.connections[header.connectPort].dynRepChannel
 
             dynRepChannel.handleRequest [
               @parser.encode({
@@ -83,9 +85,9 @@ class Request extends Channel
               messageReply
             ]
 
-        when 'disconnect'
+        when 'disconnected'
           @logger.debug "MOCK Request #{@name} disconnect received"
-          reply = [[@parser.encode({result: 'ok'})]]
+          reply = [[{status: 'OK'}]]
           resolve reply
 
         else
