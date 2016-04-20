@@ -50,7 +50,7 @@ class Request extends Channel
           @lastMessageSended = message[1]
           resolve [ [{status: 'OK'}, null] ]
 
-        when 'disconnect'
+        when 'disconnected'
           resolve()
 
         else

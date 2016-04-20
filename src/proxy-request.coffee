@@ -150,9 +150,9 @@ class ProxyRequest
         ]
       .then (reply) =>
         # It's just an ACK response
-        status = @parser.decode(reply[0][0])
-        if status.result isnt 'ok'
-          @logger.error "#{method} status: #{status.result}"
+        status = reply[0][0]
+        if status.status isnt 'OK'
+          @logger.error "#{method} status: #{status.status}"
           @connections[connectPort]?.socket?.end()
       .fail (err) =>
         @logger.error "#{method} err: #{err.stack}"
@@ -168,7 +168,7 @@ class ProxyRequest
     return q.promise (resolve, reject) =>
       try
         @connections[connectPort].socket.write(data)
-        resolve [{}] # Its just an ACK
+        resolve ['ACK'] # Its just an ACK
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
         reject err
@@ -184,13 +184,13 @@ class ProxyRequest
       @_getCurrentDynRequest(connectPort)
       .then (dynRequest) =>
         dynRequest.sendRequest [
-          @parser.encode @_createMessageHeader('disconnect', connectPort)
+          @parser.encode @_createMessageHeader('disconnected', connectPort)
         ]
       .then (reply) =>
         # It's just an ACK response
-        status = @parser.decode(reply[0][0])
-        if status.result isnt 'ok'
-          @logger.error "#{method} status: #{status.result}"
+        status = reply[0][0]
+        if status.status isnt 'OK'
+          @logger.error "#{method} status: #{status.status}"
       .fail (err) =>
         @logger.error "#{method} #{err.stack}"
       .done () =>
@@ -206,7 +206,7 @@ class ProxyRequest
     return q.promise (resolve, reject) =>
       try
         @connections[header.connectPort]?.socket?.end()
-        resolve [{}] # Its just an ACK
+        resolve ['ACK'] # Its just an ACK
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
         reject err
@@ -222,8 +222,8 @@ class ProxyRequest
       header = @parser.encode @_createMessageHeader('connect', connectPort)
       @channel.sendRequest [header], [dynReply]
       .then (reply) =>
-        status = @parser.decode(reply[0][0])
-        if status.result is 'ok'
+        status = reply[0][0]
+        if status.status is 'OK'
           if reply.length > 1 and reply[1]?.length > 0
             @logger.debug "#{method} resolved"
             dynRequest = reply[1][0]
@@ -234,7 +234,7 @@ class ProxyRequest
             @logger.error "#{method} #{err.stack}"
             reject err
         else
-          @logger.error "#{method} status=#{status.result}"
+          @logger.error "#{method} status=#{status.status}"
           reject err
       .fail (err) =>
         @logger.error "#{method} #{err.stack}"

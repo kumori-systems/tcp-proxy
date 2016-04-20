@@ -83,7 +83,7 @@ class ProxyReply
   #   - connectPort
   #   - dynRequest channel
   # Only "connect" requests will be receive via reply channel.
-  # "Data" and "Disconnect" requests will be receive via dynamic channel.
+  # "data" and "disconnected" requests will be receive via dynamic channel.
   #
   # To process a "connect-request":
   # - Creates a new tcp-connection.
@@ -115,17 +115,19 @@ class ProxyReply
             dynReply = @channel.runtimeAgent.createChannel()
 
             if not @connections[iid]? then @connections[iid] = {}
-            @connections[iid][connectPort] = {
+            conn = {
               iid: iid
               connectPort: connectPort
               socket: socket
               dynRequest: dynRequest
               dynReply: dynReply
             }
-            @connectionsBySocket[socket.localPort] = @connections[iid][connectPort]
+            @connections[iid][connectPort] = conn
+            @connectionsBySocket[socket.localPort] = conn
 
             # Tcp events
-            socket.on 'data', (data) => @_onTcpData(data, connectPort, socket)
+            socket.on 'data', (data) =>
+              @_onTcpData(data, connectPort, socket)
             socket.on 'end', () =>
               @_onTcpEnd(connectPort, socket)
             socket.on 'error', (err) =>
@@ -150,7 +152,7 @@ class ProxyReply
                 @logger.error "#{method} err:#{err.message}"
                 q(err)
 
-            resolve [[{}], [dynReply]]
+            resolve [['ACK'], [dynReply]]
 
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
@@ -193,7 +195,7 @@ class ProxyReply
         iid = header.fromInstance
         connectPort = header.connectPort
         @connections[iid][connectPort].socket.write(data)
-        resolve [{}] # Its just an ACK
+        resolve ['ACK'] # Its just an ACK
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
         reject err
@@ -208,13 +210,13 @@ class ProxyReply
     dynRequest = @_getCurrentDynRequest(socket)
     if dynRequest?
       dynRequest.sendRequest [
-        @parser.encode @_createMessageHeader('disconnect', connectPort)
+        @parser.encode @_createMessageHeader('disconnected', connectPort)
       ]
       .then (reply) =>
         # It's just an ACK response
-        status = @parser.decode(reply[0][0])
-        if status.result isnt 'ok'
-          @logger.error "#{method} status: #{status.result}"
+        status = reply[0][0]
+        if status.status isnt 'OK'
+          @logger.error "#{method} status: #{status.status}"
       .fail (err) =>
         @logger.error "#{method} #{err.stack}"
       .done () =>
@@ -237,7 +239,7 @@ class ProxyReply
         connectPort = header.connectPort
         socket = @connections[iid][connectPort].socket
         if socket? then socket.end()
-        resolve [{}] # Its just an ACK
+        resolve ['ACK'] # Its just an ACK
       catch err
         @logger.error "#{method} catch error: #{err.stack}"
         reject err
