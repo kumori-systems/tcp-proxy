@@ -12,6 +12,7 @@ GETROLE_TIMEOUT = 10000
 class ProxyDuplexBind
 
 
+  # Constructor
   # Parameters:
   # @owner: proxytcp container (permits issue events)
   # @iid: owner instance iid
@@ -20,9 +21,9 @@ class ProxyDuplexBind
   # @port: legacy bind tcp port
   #
   constructor: (@owner, @role, @iid, @channel, @port) ->
-    @name = "#{@role}/#{@iid}/#{@channel.name}"
-    method = 'ProxyDuplexBind.constructor'
-    @logger.info "#{method} #{@name}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@port}"
+    method = "ProxyDuplexBind.constructor #{@name}"
+    @logger.info "#{method}"
     @bindPorts = {}
     @currentMembership = [] # List of IID
     @changeMemberSemaphore = new Semaphore()
@@ -37,8 +38,8 @@ class ProxyDuplexBind
       @channel.on 'message', @_onMessage
       @channel.getMembership()
       .then (members) =>
-        @_onChangeMembership(members)
         resolve()
+        process.nextTick () => @_onChangeMembership(members)
       .fail (err) ->
         reject err
 

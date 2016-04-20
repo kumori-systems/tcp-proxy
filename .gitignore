@@ -1,0 +1,6 @@
+/coverage
+/.project
+/node_modules
+/build
+/reports
+*.log

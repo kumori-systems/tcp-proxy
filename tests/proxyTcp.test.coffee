@@ -2,7 +2,8 @@ should = require 'should'
 slaputils = require 'slaputils'
 q = require 'q'
 _ = require 'lodash'
-MockComponent = require('./mock/mock').MockComponent
+
+MockComponent = require('./mock/mockComponent')
 
 manifestA = require './manifests/A.json'
 manifestB = require './manifests/B.json'
@@ -10,6 +11,7 @@ manifestC = require './manifests/C.json'
 
 
 describe 'Initialization tests', ->
+
   logger = null
 
   before (done) ->
@@ -19,13 +21,14 @@ describe 'Initialization tests', ->
       'console-log' : false
       'console-level' : 'debug'
       'colorize': true
-      'file-log' : true
+      'file-log' : false
       'file-level': 'debug'
       'file-filename' : 'slap.log'
       'http-log' : false
       'vm' : ''
       'auto-method': false
     }
+    MockComponent.useThisChannels('mockChannels_testProxyTcp')
     done()
 
 
@@ -33,7 +36,7 @@ describe 'Initialization tests', ->
     mockComponentA = new MockComponent 'A_1', 'A', manifestA.configuration, \
                                          manifestA.provided, manifestA.required
     mockComponentA.run()
-    mockComponentA.on 'ready', (bindIp) =>
+    mockComponentA.on 'ready', (bindIp) ->
       c = mockComponentA.proxy.channels
       c['send1'].proxy.constructor.name.should.be.eql 'ProxySend'
       c['req1'].proxy.constructor.name.should.be.eql 'ProxyRequest'
@@ -42,9 +45,9 @@ describe 'Initialization tests', ->
       setTimeout () ->
         mockComponentA.shutdown()
       , 100
-    mockComponentA.on 'close', () =>
+    mockComponentA.on 'close', () ->
       done()
-    mockComponentA.on 'error', (err) =>
+    mockComponentA.on 'error', (err) ->
       done(err)
 
 
@@ -52,7 +55,7 @@ describe 'Initialization tests', ->
     mockComponentB = new MockComponent 'B_1', 'B', manifestB.configuration, \
                                        manifestB.provided, manifestB.required
     mockComponentB.run()
-    mockComponentB.on 'ready', (bindIp) =>
+    mockComponentB.on 'ready', (bindIp) ->
       c = mockComponentB.proxy.channels
       c['recv1'].proxy.constructor.name.should.be.eql 'ProxyReceive'
       c['rep1'].proxy.constructor.name.should.be.eql 'ProxyReply'
@@ -60,9 +63,9 @@ describe 'Initialization tests', ->
       setTimeout () ->
         mockComponentB.shutdown()
       , 100
-    mockComponentB.on 'close', () =>
+    mockComponentB.on 'close', () ->
       done()
-    mockComponentB.on 'error', (err) =>
+    mockComponentB.on 'error', (err) ->
       done(err)
 
 

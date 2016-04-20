@@ -13,7 +13,8 @@ class ProxySend
   init: () ->
     method = 'ProxySend.init'
     @logger.info "#{method}"
-    return q.promise (resolve, reject) -> resolve()
+    return q.promise (resolve, reject) ->
+      resolve()
 
 
   terminate: () ->
