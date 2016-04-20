@@ -17,7 +17,7 @@ describe 'Ip-Utils tests', ->
       'console-log' : false
       'console-level' : 'debug'
       'colorize': true
-      'file-log' : true
+      'file-log' : false
       'file-level': 'debug'
       'file-filename' : 'slap.log'
       'http-log' : false

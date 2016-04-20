@@ -35,7 +35,7 @@ class ProxyDuplexConnect
     return q.promise (resolve, reject) =>
       promises = []
       promises.push port.terminate() for key, port of @connectPorts
-      q.all(promises).then () => resolve()
+      q.all(promises).then () -> resolve()
 
 
   _onMessage: (segments) =>
