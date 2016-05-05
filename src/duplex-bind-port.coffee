@@ -64,17 +64,24 @@ class DuplexBindPort extends EventEmitter
     connectPort = socket.remotePort
     @logger.debug "#{method} #{@name} #{connectPort}"
     @connections[connectPort] = socket
-    socket.on 'data', (data) => @_onData data, connectPort
-    socket.on 'end', () => @_onDisconnect connectPort
-    socket.on 'error', (err) => @_onError err, connectPort
-    socket.on 'close', () => @_onClose connectPort
-    socket.on 'timeout', () => @_onTimeout connectPort
     @emit 'bindOnConnect', {
       remoteIid: @remoteIid,
       bindPort: @port,
       connectPort: connectPort,
       data: null
     }
+    # TODO JVALERO
+    # Solución temporal a un problema reproducido por Álex con Mongo
+    # Aplicaré la mejora correcta dentro de unos días, pero necesito darle
+    # solución inmediata a Álex
+    @logger.info "PARCHE-1 proxytcp duplex"
+    PARCHE = q.delay(100)
+    PARCHE.then () => @logger.info "PARCHE-2 proxytcp duplex"
+    socket.on 'data', (data) => PARCHE.then () => @_onData data, connectPort
+    socket.on 'end', () => PARCHE.then () => @_onDisconnect connectPort
+    socket.on 'error', (err) => PARCHE.then () => @_onError err, connectPort
+    socket.on 'close', () => PARCHE.then () => @_onClose connectPort
+    socket.on 'timeout', () => PARCHE.then () =>  @_onTimeout connectPort
 
 
   _onData: (data, connectPort) =>
