@@ -74,9 +74,7 @@ class DuplexBindPort extends EventEmitter
     # Solución temporal a un problema reproducido por Álex con Mongo
     # Aplicaré la mejora correcta dentro de unos días, pero necesito darle
     # solución inmediata a Álex
-    @logger.info "PARCHE-1 proxytcp duplex"
     PARCHE = q.delay(250)
-    PARCHE.then () => @logger.info "PARCHE-2 proxytcp duplex"
     socket.on 'data', (data) => PARCHE.then () => @_onData data, connectPort
     socket.on 'end', () => PARCHE.then () => @_onDisconnect connectPort
     socket.on 'error', (err) => PARCHE.then () => @_onError err, connectPort
