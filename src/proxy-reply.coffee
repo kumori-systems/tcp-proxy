@@ -50,7 +50,6 @@ class ProxyReply
     #     }
     #   }
     @connections = {}
-    @connectionsBySocket = {}
 
     @channel.handleRequest = @_handleRequest
 
@@ -123,13 +122,12 @@ class ProxyReply
               dynReply: dynReply
             }
             @connections[iid][connectPort] = conn
-            @connectionsBySocket[socket.localPort] = conn
 
             # Tcp events
             socket.on 'data', (data) =>
-              @_onTcpData(data, connectPort, socket)
+              @_onTcpData(data, conn)
             socket.on 'end', () =>
-              @_onTcpEnd(connectPort, socket)
+              @_onTcpEnd(conn)
             socket.on 'error', (err) =>
               @logger.error "#{method} event:onError #{err.stack}"
               socket.end()
@@ -162,13 +160,13 @@ class ProxyReply
   # Tcp-connection receives new data.
   # Data must be sended through dynamic request channel.
   #
-  _onTcpData: (data, connectPort, socket) =>
+  _onTcpData: (data, conn) =>
     method = "ProxyReply._onTcpData #{@name}"
-    @logger.debug "#{method} port:#{connectPort}"
-    dynRequest = @_getCurrentDynRequest(socket)
+    @logger.debug "#{method} port:#{conn.connectPort}"
+    dynRequest = conn.dynRequest
     if dynRequest?
       dynRequest.sendRequest [
-        @parser.encode(@_createMessageHeader('data', connectPort)),
+        @parser.encode(@_createMessageHeader('data', conn.connectPort)),
         data
       ]
       .then (reply) =>
@@ -204,13 +202,13 @@ class ProxyReply
   # Tcp-connection receives a disconnect.
   # Disconnect must be sended through dynamic request channel.
   #
-  _onTcpEnd: (connectPort, socket) =>
-    method = "ProxyReply._onTcpEnd #{@name} port:#{connectPort}"
+  _onTcpEnd: (conn) =>
+    method = "ProxyReply._onTcpEnd #{@name} port:#{conn.connectPort}"
     @logger.debug "#{method}"
-    dynRequest = @_getCurrentDynRequest(socket)
+    dynRequest = conn.dynRequest
     if dynRequest?
       dynRequest.sendRequest [
-        @parser.encode @_createMessageHeader('disconnected', connectPort)
+        @parser.encode @_createMessageHeader('disconnected', conn.connectPort)
       ]
       .then (reply) =>
         # It's just an ACK response
@@ -220,9 +218,7 @@ class ProxyReply
       .fail (err) =>
         @logger.error "#{method} #{err.stack}"
       .done () =>
-        conn = @connectionsBySocket[socket.localPort]
         delete @connections[conn.iid][conn.connectPort]
-        delete @connectionsBySocket[socket.localPort]
     #else --> this case isnt an error.
     #  @logger.error "#{method} dynRequest not found"
 
@@ -231,7 +227,7 @@ class ProxyReply
   # Tcp-connection must be disconnected too.
   #
   _onChannelEnd: (header, connectPort) ->
-    method = "ProxyReply._onChannelEnd #{@name} port:#{connectPort}"
+    method = "ProxyReply._onChannelEnd #{@name} port:#{header.connectPort}"
     @logger.debug "#{method}"
     return q.promise (resolve, reject) =>
       try
@@ -245,10 +241,6 @@ class ProxyReply
         reject err
 
 
-  # Returns the dynRequest channel that must be used for this connection.
-  #
-  _getCurrentDynRequest: (socket) ->
-    return @connectionsBySocket[socket.localPort]?.dynRequest
 
 
   _createMessageHeader: (type, connectPort) ->

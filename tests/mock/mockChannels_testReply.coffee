@@ -51,7 +51,7 @@ class Request extends Channel
           resolve [ [{status: 'OK'}, null] ]
 
         when 'disconnected'
-          resolve()
+          resolve [ [{status: 'OK'}, null] ]
 
         else
           throw new Error "Unexpected sendRequest.header.type: #{header.type}"
