@@ -5,7 +5,7 @@ slaputils = require 'slaputils'
 Semaphore = require './semaphore'
 
 
-GETROLE_TIMEOUT = 10000
+GETROLE_TIMEOUT = 30000
 
 # Proxy for duplex 'bind' channels
 #
