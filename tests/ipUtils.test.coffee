@@ -35,6 +35,15 @@ describe 'Ip-Utils tests', ->
     ipA1 = IpUtils.getIpFromIid 'A_X_0'
     ipA65532 = IpUtils.getIpFromIid 'A_X_65532'
     ipA1.should.be.equal '127.0.0.2'
+    ipA65532.should.be.equal '127.0.255.254'
+    done()
+
+
+  it 'Get IP from IID, using dash', (done) ->
+    ipA1 = IpUtils.getIpFromIid 'A_X-0'
+    ipA65532 = IpUtils.getIpFromIid 'A_X-65532'
+    ipA1.should.be.equal '127.0.0.2'
+    ipA65532.should.be.equal '127.0.255.254'
     done()
 
 
