@@ -1,5 +1,5 @@
 ###
-IPs assigned to instances id (format X_Z):
+IPs assigned to instances id (format X_Z or X-Z):
   instance X_0 --> 127.0.0.2
   [...]
   instance X_65532 --> 127.0.255.254
@@ -19,6 +19,9 @@ FIRST_POOL_IP_RANGE = 2130771968 # 127.1.0.1
 POOL_IP_QUANTITY = 65535
 LAST_POOL_IP_RANGE = POOL_IP_QUANTITY+FIRST_POOL_IP_RANGE # 127.1.255.255
 
+# Instances names can be X_100 or X-10
+COUNT_SEPARATOR_TOKENS = ['_', '-']
+
 
 num2Ip = (num) ->
   d = num%256
@@ -33,7 +36,7 @@ module.exports =
 
   getIpFromIid: (iid) ->
     try
-      num = parseInt(iid[iid.lastIndexOf('_')+1..]) + FIRST_IID_IP_RANGE
+      num = parseInt(iid[@_getLastTokenIndex(iid)+1..]) + FIRST_IID_IP_RANGE
       if num > LAST_IID_IP_RANGE
         throw new Error "id must be < #{IID_IP_QUANTITY}"
       return num2Ip num
@@ -49,6 +52,13 @@ module.exports =
     catch e
       throw new Error "Error generating IP (pool_counter=#{pool_counter}) : \
                        #{e.message}"
+
+  _getLastTokenIndex: (iid) ->
+    index = -1
+    for token in COUNT_SEPARATOR_TOKENS
+      tokenIndex = iid.lastIndexOf token
+      if tokenIndex > index then index = tokenIndex
+    return index
 
   __unitTestUtil__: (value) ->
     pool_counter = value
