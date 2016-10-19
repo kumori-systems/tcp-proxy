@@ -21,15 +21,15 @@ class ProxyDuplexBind
   constructor: (@owner, @role, @iid, @channel, @port) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}/#{@port}"
     method = "ProxyDuplexBind.constructor #{@name}"
-    @logger.info "#{method}"
+    @logger.info method
     @bindPorts = {}
-    @currentMembership = [] # List of IID
+    @currentMembership = []
     @changeMemberSemaphore = new Semaphore()
 
 
   init: () ->
-    method = 'ProxyDuplexBind.init'
-    @logger.info "#{method} #{@name}"
+    method = "ProxyDuplexBind.init #{@name}"
+    @logger.info method
     return q.promise (resolve, reject) =>
       @channel.on 'changeMembership', @_onChangeMembership
       @channel.on 'message', @_onMessage
@@ -42,8 +42,8 @@ class ProxyDuplexBind
 
 
   terminate: () ->
-    method = 'ProxyDuplexBind.terminate'
-    @logger.info "#{method} #{@name}"
+    method = "ProxyDuplexBind.terminate #{@name}"
+    @logger.info method
     return q.promise (resolve, reject) =>
       promises = []
       promises.push port.terminate() for iid, port of @bindPorts
@@ -53,11 +53,14 @@ class ProxyDuplexBind
 
 
   _onChangeMembership: (newMembership) =>
-    method = 'ProxyDuplexBind._onChangeMembership'
-    @logger.info "#{method} #{@name} newMembership=#{newMembership}"
+    method = "ProxyDuplexBind._onChangeMembership #{@name}"
+    newIds = @_getIdFromMembership newMembership
+    @logger.info "#{method} newMembership=#{newIds}"
     @changeMemberSemaphore.enter method, @, () ->
-      createMembers = _.difference newMembership, @currentMembership
-      deleteMembers = _.difference @currentMembership, newMembership
+      currentIds = @_getIdFromMembership @currentMembership
+      createMembers = _.difference newIds, currentIds
+      deleteMembers = _.difference currentIds, newIds
+      @currentMembership = _.cloneDeep newMembership
       result = q()
       createMembers.forEach (iid) =>
         result = result.then () => @_createMember(iid)
@@ -70,53 +73,43 @@ class ProxyDuplexBind
         for iid, bindPort of @bindPorts
           params.members.push {iid:iid, port:bindPort.port, ip:bindPort.ip}
         @owner.emit 'change', params
+      .fail (err) =>
+        @logger.error "#{method} #{err.stack}"
 
 
   _createMember: (iid) ->
-    method = 'ProxyDuplexBind._createMember'
-    @logger.info "#{method} #{@name} iid=#{iid}"
+    method = "ProxyDuplexBind._createMember #{@name} iid=#{iid}"
+    @logger.info method
     return q.promise (resolve, reject) =>
-      if iid is @iid
+      bindPort = new DuplexBindPort(@iid, iid, @port)
+      @bindPorts[iid] = bindPort
+      @bindPorts[iid].init()
+      .then (res, err) =>
+        if err?
+          @logger.error "#{method} #{e.stack}"
+          if @bindPorts[iid]?
+            delete @bindPorts[iid]
+        else
+          bindPort.on 'bindOnConnect', @_bindOnConnect
+          bindPort.on 'bindOnData', @_bindOnData
+          bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
         resolve()
-      else if iid in @currentMembership
-        @logger.warn "#{method} member=#{iid} already exists"
-        resolve()
-      else
-        bindPort = new DuplexBindPort(@iid, iid, @port)
-        @bindPorts[iid] = bindPort
-        @bindPorts[iid].init()
-        .then (res, err) =>
-          if err?
-            @logger.error "#{method} member=#{iid} #{e.stack}"
-            if @bindPorts[iid]?
-              delete @bindPorts[iid]
-          else
-            @currentMembership.push iid
-            bindPort.on 'bindOnConnect', @_bindOnConnect
-            bindPort.on 'bindOnData', @_bindOnData
-            bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
-          resolve()
 
 
   _deleteMember: (iid) ->
-    method = 'ProxyDuplexBind._deleteMember'
-    @logger.info "#{method} #{@name} iid=#{iid}"
+    method = "ProxyDuplexBind._deleteMember #{@name} iid=#{iid}"
+    @logger.info method
     return q.promise (resolve, reject) =>
-      if iid not in @currentMembership
-        @logger.warn "#{method} member=#{iid} not exists"
+      @bindPorts[iid].terminate()
+      .then (res, err) =>
+        if err? then @logger.error "#{method} #{e.stack}"
+        delete @bindPorts[iid]
         resolve()
-      else
-        _.pull @currentMembership, iid
-        @bindPorts[iid].terminate()
-        .then (res, err) =>
-          if err? then @logger.error "#{method} member=#{iid} #{e.stack}"
-          delete @bindPorts[iid]
-          resolve()
 
 
   _onMessage: (segments) =>
-    method = 'ProxyDuplexBind._onMessage'
-    @logger.debug "#{method} #{@name}"
+    method = "ProxyDuplexBind._onMessage #{@name}"
+    @logger.debug method
     message = @parser.decode segments[0]
     switch message.type
       when 'connectOnData'
@@ -124,45 +117,42 @@ class ProxyDuplexBind
         @_connectOnData message, data
       when 'connectOnDisconnect'
         @_connectOnDisconnect message
-      else @logger.warn "#{method} #{@name} Unexpected message type \
-                         #{message.type}"
+      else @logger.warn "#{method} Unexpected message type #{message.type}"
 
 
   _bindOnConnect: (event) =>
     message = @_createMessageSegment('bindOnConnect', event)
-    @channel.send [@parser.encode(message)], event.remoteIid
+    @_send message, null, event.remoteIid
 
 
   _bindOnData: (event) =>
     message = @_createMessageSegment('bindOnData', event)
-    @channel.send [@parser.encode(message), event.data], event.remoteIid
+    @_send message, event.data, event.remoteIid
 
 
   _bindOnDisconnect: (event) =>
     message = @_createMessageSegment('bindOnDisconnect', event)
-    @channel.send [@parser.encode(message)], event.remoteIid
+    @_send message, null, event.remoteIid
 
 
   _connectOnData: (message, data) ->
-    method = 'ProxyDuplexBind._connectOnData'
-    @logger.debug "#{method} #{@name}"
+    method = "ProxyDuplexBind._connectOnData #{@name}"
+    @logger.debug method
     bindPort = @bindPorts[message.fromInstance]
     if bindPort?
       bindPort.send data, message.connectPort
     else
-      @logger.error "#{method} #{@name} error = bindport \
-                     #{message.fromInstance} not found"
+      @logger.error "#{method} bindport #{message.fromInstance} not found"
 
 
   _connectOnDisconnect: (message) ->
-    method = 'ProxyDuplexBind._connectOnDisconnect'
-    @logger.debug "#{method} #{@name}"
+    method = "ProxyDuplexBind._connectOnDisconnect #{@name}"
+    @logger.debug method
     bindPort = @bindPorts[message.fromInstance]
     if bindPort?
       bindPort.deleteConnection message.connectPort
     else
-      @logger.error "#{method} #{@name} error = bindport \
-                     #{message.fromInstance} not found"
+      @logger.error "#{method} bindport #{message.fromInstance} not found"
 
 
   _createMessageSegment: (type, event) ->
@@ -173,6 +163,23 @@ class ProxyDuplexBind
       bindPort: event.bindPort
       connectPort: event.connectPort
     }
+
+
+  _send: (message, data, remoteIid) ->
+    target = @currentMembership.find (m) -> return (m.iid is remoteIid)
+    if target?
+      aux = [@parser.encode(message)]
+      if data? then aux.push data
+      @channel.send aux, target
+    else
+      @logger.error "ProxyDuplexBind._send #{@name} \
+                     remoteMember not found for #{remoteIid}"
+
+
+  _getIdFromMembership: (membership) ->
+    list = []
+    list.push member.iid for member in membership
+    return list
 
 
 module.exports = ProxyDuplexBind

@@ -55,11 +55,12 @@ describe 'DuplexBind Tests', ->
   it 'Add correct members', (done) ->
     @timeout MEMBERSHIP_TIMEOUT*2
     m = proxyDuplexBind.currentMembership
-    b = proxyDuplexBind.bindPorts
     m.should.be.eql []
     dup1.addMember 'B_3'
     setTimeout () ->
-      m.should.be.eql ['B_3']
+      m = proxyDuplexBind.currentMembership
+      b = proxyDuplexBind.bindPorts
+      m.should.be.eql [{iid:'B_3', endpoint:'x', service:'x'}]
       should.exist b['B_3']
       done()
     , MEMBERSHIP_TIMEOUT

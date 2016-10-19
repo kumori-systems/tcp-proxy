@@ -1,4 +1,5 @@
 q = require 'q'
+_ = require 'lodash'
 ipUtils = require './ip-utils'
 DuplexConnectPort   = require './duplex-connect-port'
 
@@ -17,25 +18,40 @@ class ProxyDuplexConnect
   constructor: (@owner, @role, @iid, @channel) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}"
     method = "ProxyDuplexConnect.constructor #{@name}"
-    @logger.info "#{method}"
+    @logger.info method
     @bindIp = ipUtils.getIpFromIid(@iid)
     @connectPorts = {}
+    @currentMembership = {}
 
 
   init: () ->
     method = "ProxyDuplexConnect.init #{@name}"
-    @logger.info "#{method}"
-    @channel.on 'message', @_onMessage
-    q()
+    @logger.info method
+    return q.promise (resolve, reject) =>
+      @channel.on 'changeMembership', @_onChangeMembership
+      @channel.on 'message', @_onMessage
+      @channel.getMembership()
+      .then (members) =>
+        resolve()
+        process.nextTick () => @_onChangeMembership(members)
+      .fail (err) ->
+        reject err
 
 
   terminate: () ->
     method = "ProxyDuplexConnect.terminate #{@name}"
-    @logger.info "#{method}"
+    @logger.info method
     return q.promise (resolve, reject) =>
       promises = []
       promises.push port.terminate() for key, port of @connectPorts
       q.all(promises).then () -> resolve()
+
+
+  _onChangeMembership: (newMembership) =>
+    method = "ProxyDuplexConnect._onChangeMembership #{@name}"
+    newIds = @_getIdFromMembership newMembership
+    @logger.info "#{method} newMembership=#{newIds}"
+    @currentMembership = _.cloneDeep newMembership
 
 
   _onMessage: (segments) =>
@@ -48,14 +64,12 @@ class ProxyDuplexConnect
         @_createConnectPort(id, msg)
         .fail (err) =>
           @logger.error "#{method} #{msg.type} error = #{err.message}"
-          message = {
-            type: 'connectOnDisconnect'
-            fromInstance: @iid
-            toInstance: msg.fromInstance
+          message = @_createMessageSegment('connectOnDisconnect', {
+            remoteMember: msg.fromInstance
             bindPort: msg.bindPort
             connectPort: msg.connectPort
-          }
-          @channel.send [@parser.encode(message)], msg.fromInstance
+          })
+          @_send message, null, msg.fromInstance
       when 'bindOnData'
         data = segments[1]
         connectPort = @connectPorts[id]
@@ -71,7 +85,7 @@ class ProxyDuplexConnect
 
   _onConnectData: (event) =>
     message = @_createMessageSegment('connectOnData', event)
-    @channel.send [@parser.encode(message), event.data], event.remoteIid
+    @_send message, event.data, event.remoteIid
 
 
   _onConnectDisconnect: (event) =>
@@ -79,7 +93,7 @@ class ProxyDuplexConnect
           #{@event.bindPort}:#{@event.connectPort}"
     @_deleteConnectPort id
     message = @_createMessageSegment('connectOnDisconnect', event)
-    @channel.send [@parser.encode(message)], event.remoteIid
+    @_send message, null, event.remoteIid
 
 
   _createConnectPort: (id, msg) ->
@@ -112,6 +126,23 @@ class ProxyDuplexConnect
       bindPort: event.bindPort
       connectPort: event.connectPort
     }
+
+
+  _send: (message, data, remoteIid) ->
+    target = @currentMembership.find (m) -> return (m.iid is remoteIid)
+    if target?
+      aux = [@parser.encode(message)]
+      if data? then aux.push data
+      @channel.send aux, target
+    else
+      @logger.error "ProxyDuplexConnect._send #{@name} \
+                     remoteMember not found for #{remoteIid}"
+
+
+  _getIdFromMembership: (membership) ->
+    list = []
+    list.push member.iid for member in membership
+    return list
 
 
 module.exports = ProxyDuplexConnect

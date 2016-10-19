@@ -38,12 +38,13 @@ class Duplex extends Channel
     return q(@members)
 
   addMember: (iid) ->
-    if @members.indexOf(iid) is -1
-      @members.push iid
+    if not @members[iid]?
+      @members.push {iid:iid, endpoint:'x', service:'x'}
       @emit 'changeMembership', @members
 
   deleteMember: (iid) ->
-    _.pull @members, [iid]
+    pos = @members.findIndex (m, i) -> return (m.iid is iid)
+    if (pos > -1) then @members.splice pos, 1
     @emit 'changeMembership', @members
 
   deliverMessage: ([message, data]) ->
