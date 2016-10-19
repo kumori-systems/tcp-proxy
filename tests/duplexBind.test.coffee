@@ -14,7 +14,7 @@ describe 'DuplexBind Tests', ->
 
 
   parser = new slaputils.JsonParser()
-  GETROLE_TIMEOUT = 5000 # should be equal to proxy-duplex-bind/GETROLE_TIMEOUT
+  MEMBERSHIP_TIMEOUT = 500
   MESSAGETEST = {value1: 'hello', value2: 10}
   mockComponentA = null
   proxyDuplexBind = null
@@ -53,46 +53,20 @@ describe 'DuplexBind Tests', ->
 
 
   it 'Add correct members', (done) ->
-    @timeout GETROLE_TIMEOUT*2
+    @timeout MEMBERSHIP_TIMEOUT*2
     m = proxyDuplexBind.currentMembership
     b = proxyDuplexBind.bindPorts
-    m.should.be.eql [] # A_1 isnt included in membership
-    dup1.addMember 'A_2'
+    m.should.be.eql []
     dup1.addMember 'B_3'
     setTimeout () ->
-      m.should.be.eql ['A_2', 'B_3']
-      should.not.exist b['A_2']
+      m.should.be.eql ['B_3']
       should.exist b['B_3']
       done()
-    , GETROLE_TIMEOUT
-
-
-  it 'Add incorrect-member', (done) ->
-    @timeout GETROLE_TIMEOUT*2
-    m = proxyDuplexBind.currentMembership
-    b = proxyDuplexBind.bindPorts
-    dup1.addMember 'Z_4'
-    setTimeout () ->
-      m.should.be.eql ['A_2', 'B_3'] # Z4 -> simulated error
-      should.exist b['B_3']
-      done()
-    , GETROLE_TIMEOUT
-
-
-  it 'Add timeout-member', (done) ->
-    @timeout GETROLE_TIMEOUT*2
-    m = proxyDuplexBind.currentMembership
-    b = proxyDuplexBind.bindPorts
-    dup1.addMember 'T_4'
-    setTimeout () ->
-      m.should.be.eql ['A_2', 'B_3'] # T4 -> simulated timeout
-      should.exist b['B_3']
-      done()
-    , GETROLE_TIMEOUT+1000
+    , MEMBERSHIP_TIMEOUT
 
 
   it 'Send and receive messages', (done) ->
-    @timeout GETROLE_TIMEOUT*4
+    @timeout MEMBERSHIP_TIMEOUT*4
     bindport_B_3 = proxyDuplexBind.bindPorts['B_3']
     options = {host: bindport_B_3.ip, port: bindport_B_3.port}
     promises = []
@@ -123,7 +97,7 @@ describe 'DuplexBind Tests', ->
               reject new Error 'Unexpected Message'
           setTimeout () ->
             reject new Error 'Timeout message'
-          , GETROLE_TIMEOUT+1000
+          , MEMBERSHIP_TIMEOUT+1000
         .then () ->
           legacyClient.end()
           q.delay(WAIT_TIME)

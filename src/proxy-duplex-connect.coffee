@@ -41,38 +41,32 @@ class ProxyDuplexConnect
   _onMessage: (segments) =>
     method = "ProxyDuplexConnect._onMessage #{@name}"
     msg = @parser.decode segments[0]
-    if msg.type is 'getrolerequest'
-      @logger.debug "#{method} type=#{msg.type}"
-      msg.type = 'getroleresponse'
-      msg.result = @role
-      @channel.send [@parser.encode msg], msg.sender
-    else
-      id = "#{msg.fromInstance}:#{msg.bindPort}:#{msg.connectPort}"
-      @logger.debug "#{method} type=#{msg.type} id=#{id}"
-      switch msg.type
-        when 'bindOnConnect'
-          @_createConnectPort(id, msg)
-          .fail (err) =>
-            @logger.error "#{method} #{msg.type} error = #{err.message}"
-            message = {
-              type: 'connectOnDisconnect'
-              fromInstance: @iid
-              toInstance: msg.fromInstance
-              bindPort: msg.bindPort
-              connectPort: msg.connectPort
-            }
-            @channel.send [@parser.encode(message)], msg.fromInstance
-        when 'bindOnData'
-          data = segments[1]
-          connectPort = @connectPorts[id]
-          if connectPort?
-            @logger.debug "#{method} #{msg.type} send msg"
-            connectPort.send new Buffer data
-          else @logger.error "#{method} #{msg.type} error = connectPort \
-                              doesnt exists}"
-        when 'bindOnDisconnect'
-          @_deleteConnectPort id
-        else @logger.warn "#{method} Unexpected msg type #{msg.type}"
+    id = "#{msg.fromInstance}:#{msg.bindPort}:#{msg.connectPort}"
+    @logger.debug "#{method} type=#{msg.type} id=#{id}"
+    switch msg.type
+      when 'bindOnConnect'
+        @_createConnectPort(id, msg)
+        .fail (err) =>
+          @logger.error "#{method} #{msg.type} error = #{err.message}"
+          message = {
+            type: 'connectOnDisconnect'
+            fromInstance: @iid
+            toInstance: msg.fromInstance
+            bindPort: msg.bindPort
+            connectPort: msg.connectPort
+          }
+          @channel.send [@parser.encode(message)], msg.fromInstance
+      when 'bindOnData'
+        data = segments[1]
+        connectPort = @connectPorts[id]
+        if connectPort?
+          @logger.debug "#{method} #{msg.type} send msg"
+          connectPort.send new Buffer data
+        else @logger.error "#{method} #{msg.type} error = connectPort \
+                            doesnt exists}"
+      when 'bindOnDisconnect'
+        @_deleteConnectPort id
+      else @logger.warn "#{method} Unexpected msg type #{msg.type}"
 
 
   _onConnectData: (event) =>
