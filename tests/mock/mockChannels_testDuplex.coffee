@@ -31,19 +31,20 @@ class Reply extends Channel
 class Duplex extends Channel
 
   constructor: (@name, @iid) ->
-    @members = [@iid]
+    @members = []
     @handleRequest = null
 
   getMembership: () ->
     return q(@members)
 
   addMember: (iid) ->
-    if @members.indexOf(iid) is -1
-      @members.push iid
+    if not @members[iid]?
+      @members.push {iid:iid, endpoint:'x', service:'x'}
       @emit 'changeMembership', @members
 
   deleteMember: (iid) ->
-    _.pull @members, [iid]
+    pos = @members.findIndex (m, i) -> return (m.iid is iid)
+    if (pos > -1) then @members.splice pos, 1
     @emit 'changeMembership', @members
 
   deliverMessage: ([message, data]) ->
@@ -56,20 +57,6 @@ class Duplex extends Channel
     @logger.debug "MOCK Duplex channel send target:#{target} \
                    message:#{JSON.stringify message}"
     switch message.type
-      when 'getrolerequest'
-        role = message.data.slice(0,1)
-        if role is 'T'
-          @logger.warn 'MOCK getrole simulated timeout'
-        else
-          setTimeout () =>
-            if role is 'Z'
-              @logger.warn 'MOCK getrole simulated error'
-              message.err = 'getrole simulated error'
-            else
-              message.result = role
-            message.type = 'getroleresponse'
-            @emit('message', [@parser.encode message])
-          , 500
       when 'bindOnConnect'
         @logger.debug "MOCK Duplex channel processing bindOnConnect"
       when 'bindOnData'

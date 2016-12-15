@@ -37,6 +37,7 @@ describe 'ProxyDuplexConnect Tests', ->
     mockComponentB.once 'ready', (bindIp) ->
       proxyDuplexConnect = mockComponentB.proxy.channels['dup2'].proxy
       dup2 = mockComponentB.proxy.channels['dup2'].channel
+      dup2.addMember 'A_1'
       done()
     mockComponentB.on 'error', (err) -> done(err)
 
