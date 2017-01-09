@@ -2,7 +2,7 @@ q = require 'q'
 _ = require 'lodash'
 DuplexBindPort = require './duplex-bind-port'
 slaputils = require 'slaputils'
-Semaphore = require './semaphore'
+Semaphore = slaputils.Semaphore
 
 
 # Proxy for duplex 'bind' channels
