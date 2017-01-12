@@ -70,16 +70,11 @@ class DuplexBindPort extends EventEmitter
       connectPort: connectPort,
       data: null
     }
-    # TODO JVALERO
-    # Solución temporal a un problema reproducido por Álex con Mongo
-    # Aplicaré la mejora correcta dentro de unos días, pero necesito darle
-    # solución inmediata a Álex
-    PARCHE = q.delay(250)
-    socket.on 'data', (data) => PARCHE.then () => @_onData data, connectPort
-    socket.on 'end', () => PARCHE.then () => @_onDisconnect connectPort
-    socket.on 'error', (err) => PARCHE.then () => @_onError err, connectPort
-    socket.on 'close', () => PARCHE.then () => @_onClose connectPort
-    socket.on 'timeout', () => PARCHE.then () =>  @_onTimeout connectPort
+    socket.on 'data', (data) =>  @_onData data, connectPort
+    socket.on 'end', () =>  @_onDisconnect connectPort
+    socket.on 'error', (err) =>  @_onError err, connectPort
+    socket.on 'close', () =>  @_onClose connectPort
+    socket.on 'timeout', () =>   @_onTimeout connectPort
 
 
   _onData: (data, connectPort) =>
