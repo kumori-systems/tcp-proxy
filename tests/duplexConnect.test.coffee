@@ -50,6 +50,9 @@ describe 'ProxyDuplexConnect Tests', ->
   it 'Sends a message and receives response', (done) ->
     MESSAGETEST = {value1: 'hello', value2: 10}
     MESSAGETESTRESPONSE = {result: 'ok'}
+    MESSAGECHECKOVERLAY = {value1: 'overlay'}
+    MESSAGECHECKOVERLAYRESPONSE = {result: 'overlay'}
+
     bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].port
     ephimeralPort = 5001
     msg1 = {
@@ -68,8 +71,9 @@ describe 'ProxyDuplexConnect Tests', ->
       bindPort: bindPort, connectPort: ephimeralPort
     }
 
-    dup2.once 'connectOnData', (data) ->
+    dup2.on 'connectOnData', (data) ->
       data = parser.decode data
+      if data.result is 'overlay' then return
       data.should.be.eql MESSAGETESTRESPONSE
       dup2.deliverMessage [parser.encode(msg3), null]
       q.delay(500)
@@ -80,7 +84,11 @@ describe 'ProxyDuplexConnect Tests', ->
 
     tcpServer = net.createServer (socket) ->
       socket.on 'data', (data) ->
-        socket.write(parser.encode(MESSAGETESTRESPONSE))
+        data = parser.decode(data.toString())
+        if data.value1 is 'hello'
+          socket.write(parser.encode(MESSAGETESTRESPONSE))
+        else if data.value1 is 'overlay'
+          socket.write(parser.encode(MESSAGECHECKOVERLAYRESPONSE))
       socket.on 'end', () ->
         # do nothing
       socket.on 'error', (err) ->
@@ -90,6 +98,9 @@ describe 'ProxyDuplexConnect Tests', ->
 
     tcpServer.listen bindPort, proxyDuplexConnect.bindIp, () ->
       dup2.deliverMessage [parser.encode(msg1), null]
+      # Send data immediately after connection, to check that it doesnt fail
+      dup2.deliverMessage [parser.encode(msg2), \
+                           parser.encode(MESSAGECHECKOVERLAY)]
       q.delay(500)
       .then () ->
         id = "#{msg1.fromInstance}:#{msg1.bindPort}:#{msg1.connectPort}"
