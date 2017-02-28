@@ -1,4 +1,4 @@
-image: slap_gitlab_node_zmq:latest
+image: registry.gitlab.com/ecloud/ci-runners:latest
 
 variables:
   PROJECT: "proxy-tcp"
@@ -14,7 +14,7 @@ test_master:
     paths:
       - node_modules
   only:
-    - master@iti_kumori_paas/proxy-tcp
+    - master@ECloud/proxy-tcp
     - triggers
 
 test:
@@ -25,6 +25,6 @@ test:
     - npm run spec
     - npm run lint
   except:
-    - master@iti_kumori_paas/proxy-tcp
+    - master@ECloud/proxy-tcp
     - triggers
 
