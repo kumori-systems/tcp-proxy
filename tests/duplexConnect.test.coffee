@@ -10,12 +10,67 @@ manifestB = require './manifests/B.json'
 
 describe 'ProxyDuplexConnect Tests', ->
 
+  MSG_TEST = {value1: 'hello', value2: 10}
+  MSG_TESTRESPONSE = {result: 'ok'}
+  MSG_CHECKOVERLAY = {value1: 'overlay'}
+  MSG_CHECKOVERLAYRESPONSE = {result: 'overlay'}
+  MSG_FORCECLOSE = {value1: 'forceclose'}
 
   parser = new slaputils.JsonParser()
   mockComponentB = null
   proxyDuplexConnect = null
   dup2 = null
   logger = null
+  ephimeralPort = 5001
+  bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].port
+  tcpServer = null
+
+  msg1 = {
+    type: 'bindOnConnect',
+    fromInstance: 'A_1', toInstance: 'B_2',
+    bindPort: bindPort, connectPort: ephimeralPort
+  }
+  msg2 = {
+    type: 'bindOnData',
+    fromInstance: 'A_1', toInstance: 'B_2',
+    bindPort: bindPort, connectPort: ephimeralPort
+  }
+  msg3 = {
+    type: 'bindOnDisconnect',
+    fromInstance: 'A_1', toInstance: 'B_2',
+    bindPort: bindPort, connectPort: ephimeralPort
+  }
+
+
+  closeTcpServer = () ->
+    return q.promise (resolve, reject) ->
+      if tcpServer?
+        tcpServer.close () -> resolve()
+      else
+        resolve()
+
+
+  createTcpServer = () ->
+    return q.promise (resolve, reject) ->
+      closeTcpServer()
+      .then () ->
+        tcpServer = net.createServer (socket) ->
+          socket.on 'data', (data) ->
+            data = parser.decode(data.toString())
+            if data.value1 is 'hello'
+              socket.write(parser.encode(MSG_TESTRESPONSE))
+            else if data.value1 is 'overlay'
+              socket.write(parser.encode(MSG_CHECKOVERLAYRESPONSE))
+            else if data.value1 is 'forceclose'
+              socket.end()
+          socket.on 'end', () -> logger.info 'socket.onEnd'
+          socket.on 'error', (e) -> logger.error "socket.onError = #{e.message}"
+          socket.on 'close', () -> logger.warn 'socket.onClose'
+          socket.on 'timeout', () -> logger.warn 'socket.onTimeout'
+        tcpServer.listen bindPort, proxyDuplexConnect.bindIp, () ->
+          resolve()
+      .fail (err) ->
+        reject err
 
 
   before (done) ->
@@ -47,34 +102,12 @@ describe 'ProxyDuplexConnect Tests', ->
     mockComponentB.once 'close', () -> done()
 
 
-  it 'Sends a message and receives response', (done) ->
-    MESSAGETEST = {value1: 'hello', value2: 10}
-    MESSAGETESTRESPONSE = {result: 'ok'}
-    MESSAGECHECKOVERLAY = {value1: 'overlay'}
-    MESSAGECHECKOVERLAYRESPONSE = {result: 'overlay'}
-
-    bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].port
-    ephimeralPort = 5001
-    msg1 = {
-      type: 'bindOnConnect',
-      fromInstance: 'A_1', toInstance: 'B_2',
-      bindPort: bindPort, connectPort: ephimeralPort
-    }
-    msg2 = {
-      type: 'bindOnData',
-      fromInstance: 'A_1', toInstance: 'B_2',
-      bindPort: bindPort, connectPort: ephimeralPort
-    }
-    msg3 = {
-      type: 'bindOnDisconnect',
-      fromInstance: 'A_1', toInstance: 'B_2',
-      bindPort: bindPort, connectPort: ephimeralPort
-    }
-
+  it 'Send message + receive response, connection closed by client', (done) ->
+    dup2.removeAllListeners ['connectOnData']
     dup2.on 'connectOnData', (data) ->
       data = parser.decode data
       if data.result is 'overlay' then return
-      data.should.be.eql MESSAGETESTRESPONSE
+      data.should.be.eql MSG_TESTRESPONSE
       dup2.deliverMessage [parser.encode(msg3), null]
       q.delay(500)
       .then () ->
@@ -82,29 +115,47 @@ describe 'ProxyDuplexConnect Tests', ->
         should.not.exist proxyDuplexConnect.connectPorts[id]
         done()
 
-    tcpServer = net.createServer (socket) ->
-      socket.on 'data', (data) ->
-        data = parser.decode(data.toString())
-        if data.value1 is 'hello'
-          socket.write(parser.encode(MESSAGETESTRESPONSE))
-        else if data.value1 is 'overlay'
-          socket.write(parser.encode(MESSAGECHECKOVERLAYRESPONSE))
-      socket.on 'end', () ->
-        # do nothing
-      socket.on 'error', (err) ->
-        logger.error "socket.on error = #{err.message}"
-      socket.on 'close', () -> logger.warn "socket.on close"
-      socket.on 'timeout', () -> logger.warn "socket.on timeout"
-
-    tcpServer.listen bindPort, proxyDuplexConnect.bindIp, () ->
+    createTcpServer()
+    .then () ->
       dup2.deliverMessage [parser.encode(msg1), null]
       # Send data immediately after connection, to check that it doesnt fail
-      dup2.deliverMessage [parser.encode(msg2), \
-                           parser.encode(MESSAGECHECKOVERLAY)]
+      dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_CHECKOVERLAY)]
       q.delay(500)
+    .then () ->
+      id = "#{msg1.fromInstance}:#{msg1.bindPort}:#{msg1.connectPort}"
+      should.exist proxyDuplexConnect.connectPorts[id]
+      dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_TEST)]
+    .fail (err) ->
+      done err
+
+
+  it 'Send message + receive response, closed by server', (done) ->
+    dup2DataReceived = false
+    dup2.removeAllListeners ['connectOnData']
+    dup2.on 'connectOnData', (data) ->
+      data = parser.decode data
+      data.should.be.eql MSG_TESTRESPONSE
+      dup2DataReceived = true
+      closeTcpServer()
+      .then () ->
+        q.delay(500)
       .then () ->
         id = "#{msg1.fromInstance}:#{msg1.bindPort}:#{msg1.connectPort}"
-        should.exist proxyDuplexConnect.connectPorts[id]
-      .then () ->
-        dup2.deliverMessage [parser.encode(msg2), parser.encode(MESSAGETEST)]
-      .fail (err) -> done err
+        should.not.exist proxyDuplexConnect.connectPorts[id]
+    dup2.on 'connectOnDisconnect', (data) ->
+      if dup2DataReceived then done()
+      else done new Error 'Dup2 data not received'
+
+    createTcpServer()
+    .then () ->
+      dup2.deliverMessage [parser.encode(msg1), null]
+      q.delay(500)
+    .then () ->
+      id = "#{msg1.fromInstance}:#{msg1.bindPort}:#{msg1.connectPort}"
+      should.exist proxyDuplexConnect.connectPorts[id]
+      dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_TEST)]
+      q.delay(500)
+    .then () ->
+      dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_FORCECLOSE)]
+    .fail (err) ->
+      done err
