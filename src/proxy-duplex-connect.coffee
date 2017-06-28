@@ -89,8 +89,7 @@ class ProxyDuplexConnect
 
 
   _onConnectDisconnect: (event) =>
-    id = "#{@event.remoteIid}:#{@bindIp}:\
-          #{@event.bindPort}:#{@event.connectPort}"
+    id = "#{event.remoteIid}:#{event.bindPort}:#{event.connectPort}"
     @_deleteConnectPort id
     message = @_createMessageSegment('connectOnDisconnect', event)
     @_send message, null, event.remoteIid

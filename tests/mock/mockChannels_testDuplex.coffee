@@ -77,6 +77,10 @@ class Duplex extends Channel
         @logger.debug "MOCK Duplex channel processing connectOnData"
         data = segments[1]
         @emit 'connectOnData', data
+      when "connectOnDisconnect"
+        @logger.debug "MOCK Duplex channel processing connectOnDisconnect"
+        data = segments[1] ? null
+        @emit 'connectOnDisconnect', data
       else
         throw new Error "Duplex channel unknown message type #{message.type}"
 
