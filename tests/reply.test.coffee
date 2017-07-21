@@ -14,8 +14,8 @@ describe 'ProxyReply Tests', ->
 
 
   parser = new slaputils.JsonParser()
-  MESSAGEREQUEST = {value: 'this is the request'}
-  MESSAGEREPLY = {value: 'this is the reply'}
+  MESSAGEREQUEST = { value: 'this is the request' }
+  MESSAGEREPLY = { value: 'this is the reply' }
   logger = null
   mockComponentB = null
 
@@ -28,14 +28,14 @@ describe 'ProxyReply Tests', ->
     slaputils.setLoggerOwner 'ProxyReplyTest'
     logger = slaputils.getLogger 'ProxyReplyTest'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
+      'file-log': false
       'file-level': 'debug'
-      'file-filename' : 'slap.log'
-      'http-log' : false
-      'vm' : ''
+      'file-filename': 'slap.log'
+      'http-log': false
+      'vm': ''
       'auto-method': false
     }
     IpUtils.__unitTestUtil__ 0
@@ -75,24 +75,24 @@ describe 'ProxyReply Tests', ->
     dynRequest = null
     dynReply = null
     tcpServer.listen proxyReply1.bindPort, proxyReply1.bindIp, () ->
-      requestConnect = parser.encode({type: 'connect', fromInstance: 'A_1', \
-                       connectPort: 5001})
+      requestConnect = parser.encode({ type: 'connect', fromInstance: 'A_1'
+                       , connectPort: 5001 })
       dynRequest = new MockComponent.Request('dyn_reply_A_1', 'A_1')
       rep1.handleRequest [requestConnect], [dynRequest]
       .then () ->
         q.delay(100)
       .then () ->
         dynReply = proxyReply1.connections['A_1'][5001].dynReply
-        requestData = parser.encode({type: 'data', fromInstance: 'A_1', \
-                      connectPort: 5001})
+        requestData = parser.encode({ type: 'data', fromInstance: 'A_1'
+                      , connectPort: 5001 })
         data = parser.encode(MESSAGEREQUEST)
         try
           dynReply.handleRequest [requestData, data]
           .then () ->
             q.delay(500)
           .then () ->
-            requestDisconnect = parser.encode({type: 'disconnected', \
-                                fromInstance: 'A_1', connectPort: 5001})
+            requestDisconnect = parser.encode({ type: 'disconnected'
+                                , fromInstance: 'A_1', connectPort: 5001 })
             dynReply.handleRequest [requestDisconnect, null]
           .then () ->
             q.delay(500)

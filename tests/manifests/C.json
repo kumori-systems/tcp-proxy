@@ -4,7 +4,7 @@
   "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
   "code":"",
   "configuration":{
-    "proxyTcp": "{\"chan\":{\"port\":8000,\"mode\":\"connect\"}}"
+    "proxyTcp": "{\"chan\":{\"ports\":[8000],\"mode\":\"connect\"}}"
   },
   "provided":{
   },

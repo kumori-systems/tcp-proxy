@@ -64,7 +64,7 @@ class ProxyTcp extends EventEmitter
       @logger.info "#{method} Processing #{name} channel"
       channel = config.channel
       type = channel.constructor.name
-      port = config.port
+      ports = config.ports
       mode = config.mode
       Proxy = null
       switch type
@@ -77,9 +77,8 @@ class ProxyTcp extends EventEmitter
         when 'Send' then Proxy = ProxySend
         when 'Receive' then Proxy = ProxyReceive
         else throw new Error "Proxy for #{name}: invalid type #{type}"
-      config.proxy = new Proxy(@, @role, @iid, channel, port)
+      config.proxy = new Proxy(@, @role, @iid, channel, ports)
       @logger.info "#{method} Add #{config.proxy.constructor.name} \
                     to #{name} channel"
-
 
 module.exports = ProxyTcp

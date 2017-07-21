@@ -18,8 +18,8 @@ class ProxyDuplexBind
   # @channel: duplex channel
   # @port: legacy bind tcp port
   #
-  constructor: (@owner, @role, @iid, @channel, @port) ->
-    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@port}"
+  constructor: (@owner, @role, @iid, @channel, @ports) ->
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@ports}"
     method = "ProxyDuplexBind.constructor #{@name}"
     @logger.info method
     @bindPorts = {}
@@ -46,7 +46,9 @@ class ProxyDuplexBind
     @logger.info method
     return q.promise (resolve, reject) =>
       promises = []
-      promises.push port.terminate() for iid, port of @bindPorts
+      for iid, ports of @bindPorts
+        for port, bindPort of ports
+          promises.push bindPort.terminate()
       q.all promises
       .then () -> resolve()
       .fail (err) -> reject err
@@ -67,11 +69,17 @@ class ProxyDuplexBind
       deleteMembers.forEach (iid) =>
         result = result.then () => @_deleteMember(iid)
       result.then () =>
-        params =
+        params = {
           channel: @channel.name
           members: []
-        for iid, bindPort of @bindPorts
-          params.members.push {iid:iid, port:bindPort.port, ip:bindPort.ip}
+        }
+        for iid, ports of @bindPorts
+          for port, bindPort of ports
+            params.members.push {
+              iid: iid
+              port: bindPort.port
+              ip: bindPort.ip
+            }
         @owner.emit 'change', params
       .fail (err) =>
         @logger.error "#{method} #{err.stack}"
@@ -80,31 +88,35 @@ class ProxyDuplexBind
   _createMember: (iid) ->
     method = "ProxyDuplexBind._createMember #{@name} iid=#{iid}"
     @logger.info method
-    return q.promise (resolve, reject) =>
-      bindPort = new DuplexBindPort(@iid, iid, @port)
-      @bindPorts[iid] = bindPort
-      @bindPorts[iid].init()
-      .then (res, err) =>
-        if err?
-          @logger.error "#{method} #{e.stack}"
-          if @bindPorts[iid]?
-            delete @bindPorts[iid]
-        else
-          bindPort.on 'bindOnConnect', @_bindOnConnect
-          bindPort.on 'bindOnData', @_bindOnData
-          bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
-        resolve()
-
+    try
+      promises = []
+      @bindPorts[iid] = {}
+      for port in @ports
+        bindPort = new DuplexBindPort(@iid, iid, port)
+        @bindPorts[iid][port] = bindPort
+        promises = bindPort.init().then (res, err) =>
+          if err?
+            @logger.error "#{method} #{e.stack}"
+            if @bindPorts[iid]?
+              delete @bindPorts[iid]
+          else
+            bindPort.on 'bindOnConnect', @_bindOnConnect
+            bindPort.on 'bindOnData', @_bindOnData
+            bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
+      q.all promises
+    catch error
+      q.reject error
 
   _deleteMember: (iid) ->
     method = "ProxyDuplexBind._deleteMember #{@name} iid=#{iid}"
     @logger.info method
     return q.promise (resolve, reject) =>
-      @bindPorts[iid].terminate()
-      .then (res, err) =>
-        if err? then @logger.error "#{method} #{e.stack}"
-        delete @bindPorts[iid]
-        resolve()
+      promises = []
+      for port, bindPort of @bindPorts[iid]
+        promises.push bindPort.terminate().then (res, err) =>
+          if err? then @logger.error "#{method} #{e.stack}"
+          delete @bindPorts[iid]
+          resolve()
 
 
   _onMessage: (segments) =>
@@ -138,9 +150,10 @@ class ProxyDuplexBind
   _connectOnData: (message, data) ->
     method = "ProxyDuplexBind._connectOnData #{@name}"
     @logger.debug method
-    bindPort = @bindPorts[message.fromInstance]
-    if bindPort?
-      bindPort.send data, message.connectPort
+    bindPorts = @bindPorts[message.fromInstance]
+    if bindPorts?
+      for port, bindPort of bindPorts
+        bindPort.send data, message.connectPort
     else
       @logger.error "#{method} bindport #{message.fromInstance} not found"
 
@@ -149,8 +162,9 @@ class ProxyDuplexBind
     method = "ProxyDuplexBind._connectOnDisconnect #{@name}"
     @logger.debug method
     bindPort = @bindPorts[message.fromInstance]
-    if bindPort?
-      bindPort.deleteConnection message.connectPort
+    if bindPorts?
+      for port, bindPort of bindPorts
+        bindPort.deleteConnection message.connectPort
     else
       @logger.error "#{method} bindport #{message.fromInstance} not found"
 

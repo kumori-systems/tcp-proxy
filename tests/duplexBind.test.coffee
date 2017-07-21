@@ -15,7 +15,7 @@ describe 'DuplexBind Tests', ->
 
   parser = new slaputils.JsonParser()
   MEMBERSHIP_TIMEOUT = 500
-  MESSAGETEST = {value1: 'hello', value2: 10}
+  MESSAGETEST = { value1: 'hello', value2: 10 }
   mockComponentA = null
   proxyDuplexBind = null
   dup1 = null
@@ -26,12 +26,12 @@ describe 'DuplexBind Tests', ->
     slaputils.setLoggerOwner 'DuplexBind'
     logger = slaputils.getLogger 'DuplexBind'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
-      'http-log' : false
-      'vm' : ''
+      'file-log': false
+      'http-log': false
+      'vm': ''
       'auto-method': true
     }
 
@@ -53,23 +53,23 @@ describe 'DuplexBind Tests', ->
 
 
   it 'Add correct members', (done) ->
-    @timeout MEMBERSHIP_TIMEOUT*2
+    @timeout MEMBERSHIP_TIMEOUT * 2
     m = proxyDuplexBind.currentMembership
     m.should.be.eql []
     dup1.addMember 'B_3'
     setTimeout () ->
       m = proxyDuplexBind.currentMembership
       b = proxyDuplexBind.bindPorts
-      m.should.be.eql [{iid:'B_3', endpoint:'x', service:'x'}]
+      m.should.be.eql [{ iid: 'B_3', endpoint: 'x', service: 'x' }]
       should.exist b['B_3']
       done()
     , MEMBERSHIP_TIMEOUT
 
 
   it 'Send and receive messages', (done) ->
-    @timeout MEMBERSHIP_TIMEOUT*4
-    bindport_B_3 = proxyDuplexBind.bindPorts['B_3']
-    options = {host: bindport_B_3.ip, port: bindport_B_3.port}
+    @timeout MEMBERSHIP_TIMEOUT * 4
+    bindport_B_3 = proxyDuplexBind.bindPorts['B_3']['8000']
+    options = { host: bindport_B_3.ip, port: bindport_B_3.port }
     promises = []
     promises.push clientSendAndReceive(options)
     promises.push clientSendAndReceive(options) # a second overlay connection!
@@ -98,7 +98,7 @@ describe 'DuplexBind Tests', ->
               reject new Error 'Unexpected Message'
           setTimeout () ->
             reject new Error 'Timeout message'
-          , MEMBERSHIP_TIMEOUT+1000
+          , MEMBERSHIP_TIMEOUT + 1000
         .then () ->
           legacyClient.end()
           q.delay(WAIT_TIME)

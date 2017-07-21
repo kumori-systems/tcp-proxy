@@ -10,11 +10,11 @@ manifestB = require './manifests/B.json'
 
 describe 'ProxyDuplexConnect Tests', ->
 
-  MSG_TEST = {value1: 'hello', value2: 10}
-  MSG_TESTRESPONSE = {result: 'ok'}
-  MSG_CHECKOVERLAY = {value1: 'overlay'}
-  MSG_CHECKOVERLAYRESPONSE = {result: 'overlay'}
-  MSG_FORCECLOSE = {value1: 'forceclose'}
+  MSG_TEST = { value1: 'hello', value2: 10 }
+  MSG_TESTRESPONSE = { result: 'ok' }
+  MSG_CHECKOVERLAY = { value1: 'overlay' }
+  MSG_CHECKOVERLAYRESPONSE = { result: 'overlay' }
+  MSG_FORCECLOSE = { value1: 'forceclose' }
 
   parser = new slaputils.JsonParser()
   mockComponentB = null
@@ -22,7 +22,7 @@ describe 'ProxyDuplexConnect Tests', ->
   dup2 = null
   logger = null
   ephimeralPort = 5001
-  bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].port
+  bindPort = JSON.parse(manifestB.configuration.proxyTcp)['dup2'].ports[0]
   tcpServer = null
 
   msg1 = {
@@ -67,7 +67,7 @@ describe 'ProxyDuplexConnect Tests', ->
           socket.on 'error', (e) -> logger.error "socket.onError = #{e.message}"
           socket.on 'close', () -> logger.warn 'socket.onClose'
           socket.on 'timeout', () -> logger.warn 'socket.onTimeout'
-        tcpServer.listen bindPort, proxyDuplexConnect.bindIp, () ->
+        tcpServer.listen "#{bindPort}", proxyDuplexConnect.bindIp, () ->
           resolve()
       .fail (err) ->
         reject err
@@ -77,12 +77,12 @@ describe 'ProxyDuplexConnect Tests', ->
     slaputils.setLoggerOwner 'ProxyDuplexConnectTest'
     logger = slaputils.getLogger 'ProxyDuplexConnectTest'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
-      'http-log' : false
-      'vm' : ''
+      'file-log': false
+      'http-log': false
+      'vm': ''
       'auto-method': true
     }
     MockComponent.useThisChannels('mockChannels_testDuplex')
