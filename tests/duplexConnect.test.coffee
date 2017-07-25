@@ -24,8 +24,11 @@ describe 'ProxyDuplexConnect Tests', ->
   logger = null
   ephimeralPort = 5001
   proxyTcpConfiguration = JSON.parse(manifestB.configuration.proxyTcp)
-  bindPort1 = proxyTcpConfiguration['dup2'].ports[0]
-  bindPort2 = proxyTcpConfiguration['dup2'].ports[1]
+  minPort = proxyTcpConfiguration['dup2'].minPort
+  maxPort = proxyTcpConfiguration['dup2'].maxPort
+  ports = [minPort..maxPort]
+  bindPort1 = ports[0]
+  bindPort2 = ports[1]
   tcpServer = null
 
   msg1 = {
@@ -47,9 +50,9 @@ describe 'ProxyDuplexConnect Tests', ->
   msg4 = _.cloneDeep msg1
   msg5 = _.cloneDeep msg2
   msg6 = _.cloneDeep msg3
-  msg4.bindPort = proxyTcpConfiguration['dup2'].ports[1]
-  msg5.bindPort = proxyTcpConfiguration['dup2'].ports[1]
-  msg6.bindPort = proxyTcpConfiguration['dup2'].ports[1]
+  msg4.bindPort = bindPort2
+  msg5.bindPort = bindPort2
+  msg6.bindPort = bindPort2
 
 
   closeTcpServer = () ->

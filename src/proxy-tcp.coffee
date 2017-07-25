@@ -64,7 +64,7 @@ class ProxyTcp extends EventEmitter
       @logger.info "#{method} Processing #{name} channel"
       channel = config.channel
       type = channel.constructor.name
-      ports = config.ports
+      ports = @_getProxyPorts config
       mode = config.mode
       Proxy = null
       switch type
@@ -80,5 +80,26 @@ class ProxyTcp extends EventEmitter
       config.proxy = new Proxy(@, @role, @iid, channel, ports)
       @logger.info "#{method} Add #{config.proxy.constructor.name} \
                     to #{name} channel"
+
+  _getProxyPorts: (config) ->
+    ports = []
+    try
+      if config?.ports?
+        ports = config.ports
+      else if config?.port?
+        ports = [config.port]
+      else if config?.minPort? and config?.maxPort?
+        min = Number.parseInt config.minPort
+        max = Number.parseInt config.maxPort
+        if min <= max
+          ports = [min..max]
+        else
+          @logger.error "ProxyTcp.getProxyPorts. Invalid proxy configuration \
+          #{config}: minPort #{min} > maxPort #{max}"
+    catch error
+      message = if error?.stack? then error.stack else error
+      @logger.error "ProxyTcp.getProxyPorts. Invalid proxy configuration \
+      #{config}: #{message}"
+    return ports
 
 module.exports = ProxyTcp

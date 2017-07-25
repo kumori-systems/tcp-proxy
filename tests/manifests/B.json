@@ -4,7 +4,7 @@
   "runtime":"slap://slapdomain/runtimes/managed/nodejs/0_0_1",
   "code":"",
   "configuration":{
-    "proxyTcp": "{\"dup2\":{\"ports\":[8000,8001],\"mode\":\"connect\"},\"rep1\":{\"ports\":[9000]},\"recv1\":{\"ports\":[7000]}}"
+    "proxyTcp": "{\"dup2\":{\"minPort\":8000,\"maxPort\":8001,\"mode\":\"connect\"},\"rep1\":{\"port\":9000},\"recv1\":{\"port\":7000}}"
   },
   "provided":{
     "rep1":{

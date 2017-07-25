@@ -124,6 +124,7 @@ class ProxyDuplexBind
     method = "ProxyDuplexBind._onMessage #{@name}"
     @logger.debug method
     message = @parser.decode segments[0]
+    @logger.debug "ProxyDuplexBind._onMessage #{@name}", message
     switch message.type
       when 'connectOnData'
         data = segments[1]
@@ -162,12 +163,13 @@ class ProxyDuplexBind
   _connectOnDisconnect: (message) ->
     method = "ProxyDuplexBind._connectOnDisconnect #{@name}"
     @logger.debug method
-    bindPort = @bindPorts[message.fromInstance]
+    bindPorts = @bindPorts[message.fromInstance]
     if bindPorts?
       for port, bindPort of bindPorts
         bindPort.deleteConnection message.connectPort
     else
-      @logger.error "#{method} bindport #{message.fromInstance} not found"
+      @logger.error "#{method} bindPorts not found for #{message.fromInstance}:\
+       #{message}"
 
 
   _createMessageSegment: (type, event) ->
