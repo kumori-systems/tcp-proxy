@@ -19,7 +19,7 @@ class ProxyDuplexBind
   # @port: legacy bind tcp port
   #
   constructor: (@owner, @role, @iid, @channel, @ports) ->
-    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@ports}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}/[#{@ports}]"
     method = "ProxyDuplexBind.constructor #{@name}"
     @logger.info method
     @bindPorts = {}
@@ -94,15 +94,16 @@ class ProxyDuplexBind
       for port in @ports
         bindPort = new DuplexBindPort(@iid, iid, port)
         @bindPorts[iid][port] = bindPort
-        promises = bindPort.init().then (res, err) =>
-          if err?
-            @logger.error "#{method} #{e.stack}"
-            if @bindPorts[iid]?
-              delete @bindPorts[iid]
-          else
-            bindPort.on 'bindOnConnect', @_bindOnConnect
-            bindPort.on 'bindOnData', @_bindOnData
-            bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
+        do (bindPort) =>
+          promises = bindPort.init().then (res, err) =>
+            if err?
+              @logger.error "#{method} #{e.stack}"
+              if @bindPorts[iid]?
+                delete @bindPorts[iid]
+            else
+              bindPort.on 'bindOnConnect', @_bindOnConnect
+              bindPort.on 'bindOnData', @_bindOnData
+              bindPort.on 'bindOnDisconnect', @_bindOnDisconnect
       q.all promises
     catch error
       q.reject error
