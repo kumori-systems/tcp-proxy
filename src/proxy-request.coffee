@@ -20,10 +20,11 @@ class ProxyRequest
   # @channel: request channel to be proxified
   # @port: legacy tcp port
   #
-  constructor: (@owner, @role, @iid, @channel, @bindPort) ->
+  constructor: (@owner, @role, @iid, @channel, @bindPorts) ->
     method = 'ProxyRequest.constructor'
     @bindIp = ipUtils.getIpFromPool() # selects a local IP (127.1.x.x)
-    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPorts}"
+    @bindPort = @bindPorts[0]
     @logger.info "#{method} #{@name}"
 
     @tcpServer = null

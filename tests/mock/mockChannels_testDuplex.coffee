@@ -39,7 +39,7 @@ class Duplex extends Channel
 
   addMember: (iid) ->
     if not @members[iid]?
-      @members.push {iid:iid, endpoint:'x', service:'x'}
+      @members.push { iid: iid, endpoint: 'x', service: 'x' }
       @emit 'changeMembership', @members
 
   deleteMember: (iid) ->
@@ -69,7 +69,7 @@ class Duplex extends Channel
           bindPort: message.bindPort
           connectPort: message.connectPort
         }
-        data2 = @parser.encode {result: 'ok'}
+        data2 = @parser.encode { result: 'ok' }
         @emit('message', [message2, data2])
       when 'bindOnDisconnect'
         @logger.debug "MOCK Duplex channel processing bindOnDisconnect"

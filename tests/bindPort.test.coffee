@@ -10,7 +10,7 @@ describe 'BindPort Tests', ->
 
 
   parser = new slaputils.JsonParser()
-  MESSAGETEST = {value1: 'hello', value2: 10}
+  MESSAGETEST = { value1: 'hello', value2: 10 }
   bindPortB2 = null
   bindPortB3 = null
   logger = null
@@ -20,14 +20,14 @@ describe 'BindPort Tests', ->
     slaputils.setLoggerOwner 'BindPort'
     logger = slaputils.getLogger 'BindPort'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
+      'file-log': false
       'file-level': 'debug'
-      'file-filename' : 'slap.log'
-      'http-log' : false
-      'vm' : ''
+      'file-filename': 'slap.log'
+      'http-log': false
+      'vm': ''
       'auto-method': false
     }
     bindPortB2 = new DuplexBindPort 'A_1', 'B_2', 8000
@@ -84,7 +84,7 @@ describe 'BindPort Tests', ->
         if not connectreceived then reject new Error 'connect not received'
         else if not datareceived then reject new Error 'data not received'
         else resolve()
-      options = {host: port.ip, port: port.port}
+      options = { host: port.ip, port: port.port }
       tcpClient = net.connect options, () ->
         tcpClient.write parser.encode MESSAGETEST
         tcpClient.end()

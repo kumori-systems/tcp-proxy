@@ -99,8 +99,8 @@ class ProxyDuplexConnect
     return q.promise (resolve, reject) =>
       if @connectPorts[id]? then resolve @connectPorts[id]
       else
-        port = new DuplexConnectPort(@iid, msg.fromInstance, @bindIp,\
-                                     msg.bindPort, msg.connectPort)
+        port = new DuplexConnectPort(@iid, msg.fromInstance, @bindIp
+                   , msg.bindPort, msg.connectPort)
         @connectPorts[id] = port
         port.init()
         .then () =>

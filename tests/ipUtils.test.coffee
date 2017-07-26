@@ -14,14 +14,14 @@ describe 'Ip-Utils tests', ->
     slaputils.setLoggerOwner 'IpUtilsTest'
     logger = slaputils.getLogger 'IpUtilsTest'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
+      'file-log': false
       'file-level': 'debug'
-      'file-filename' : 'slap.log'
-      'http-log' : false
-      'vm' : ''
+      'file-filename': 'slap.log'
+      'http-log': false
+      'vm': ''
       'auto-method': false
     }
     done()
