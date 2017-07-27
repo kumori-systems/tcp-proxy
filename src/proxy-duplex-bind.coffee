@@ -65,9 +65,11 @@ class ProxyDuplexBind
       @currentMembership = _.cloneDeep newMembership
       result = q()
       createMembers.forEach (iid) =>
-        result = result.then () => @_createMember(iid)
+        if (iid != @iid)
+          result = result.then () => @_createMember(iid)
       deleteMembers.forEach (iid) =>
-        result = result.then () => @_deleteMember(iid)
+        if (iid != @iid)
+          result = result.then () => @_deleteMember(iid)
       result.then () =>
         params = {
           channel: @channel.name
