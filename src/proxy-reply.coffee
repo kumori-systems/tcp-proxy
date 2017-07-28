@@ -17,13 +17,17 @@ class ProxyReply
   # @iid: owner instance iid
   # @role: owner instance role
   # @channel: reply channel to be proxified
-  # @port: legacy tcp port
+  # @bindPorts: legacy tcp ports. Right now, is an array with a single port
   #
-  constructor: (@owner, @role, @iid, @channel, @bindPort) ->
+  constructor: (@owner, @role, @iid, @channel, @bindPorts) ->
     method = 'ProxyReply.constructor'
+    if (not Array.isArray(@bindPorts)) or (@bindPorts.length > 1)
+      throw new Error "#{method}. Last parameter should be an array with a \
+      single port"
     @bindIp = ipUtils.getIpFromIid(@iid)
-    @connectOptions = {host: @bindIp, port: @bindPort}
-    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPort}"
+    @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPorts}"
+    @bindPort = @bindPorts[0]
+    @connectOptions = { host: @bindIp, port: @bindPort }
     @logger.info "#{method} #{@name}"
 
     # Current TCP-connections dictionary.

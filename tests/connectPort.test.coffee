@@ -10,8 +10,8 @@ describe 'ConnectPort Tests', ->
 
 
   parser = new slaputils.JsonParser()
-  MESSAGETEST = {value1: 'hello', value2: 10}
-  MESSAGETESTRESPONSE = {result: 'ok'}
+  MESSAGETEST = { value1: 'hello', value2: 10 }
+  MESSAGETESTRESPONSE = { result: 'ok' }
   connectPortA1_1 = null
   connectPortA1_2 = null
   tcpServer = null # simulates legacy server
@@ -22,14 +22,14 @@ describe 'ConnectPort Tests', ->
     slaputils.setLoggerOwner 'ConnectPort'
     logger = slaputils.getLogger 'ConnectPort'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
+      'file-log': false
       'file-level': 'debug'
-      'file-filename' : 'slap.log'
-      'http-log' : false
-      'vm' : ''
+      'file-filename': 'slap.log'
+      'http-log': false
+      'vm': ''
       'auto-method': false
     }
     binded = false
