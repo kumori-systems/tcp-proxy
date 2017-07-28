@@ -16,12 +16,14 @@ class ProxyDuplexBind
   # @iid: owner instance iid
   # @role: owner instance role
   # @channel: duplex channel
-  # @port: legacy bind tcp port
+  # @bindPorts: legacy tcp ports.
   #
   constructor: (@owner, @role, @iid, @channel, @ports) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}/[#{@ports}]"
     method = "ProxyDuplexBind.constructor #{@name}"
     @logger.info method
+    if not Array.isArray(@ports)
+      throw new Error "#{method}. Last parameter should be an array of ports"
     @bindPorts = {}
     @currentMembership = []
     @changeMemberSemaphore = new Semaphore()
@@ -152,24 +154,23 @@ class ProxyDuplexBind
   _connectOnData: (message, data) ->
     method = "ProxyDuplexBind._connectOnData #{@name}"
     @logger.debug method
-    bindPorts = @bindPorts[message.fromInstance]
-    if bindPorts?
-      for port, bindPort of bindPorts
-        bindPort.send data, message.connectPort
+    bindPort = @bindPorts[message.fromInstance]?[message.bindPort]
+    if bindPort?
+      bindPort.send data, message.connectPort
     else
-      @logger.error "#{method} bindport #{message.fromInstance} not found"
+      @logger.error "#{method} bindPort not found for #{message.fromInstance}:\
+      #{message.bindPort}: #{message}"
 
 
   _connectOnDisconnect: (message) ->
     method = "ProxyDuplexBind._connectOnDisconnect #{@name}"
     @logger.debug method
-    bindPorts = @bindPorts[message.fromInstance]
-    if bindPorts?
-      for port, bindPort of bindPorts
-        bindPort.deleteConnection message.connectPort
+    bindPort = @bindPorts[message.fromInstance]?[message.bindPort]
+    if bindPort?
+      bindPort.deleteConnection message.connectPort
     else
-      @logger.error "#{method} bindPorts not found for #{message.fromInstance}:\
-       #{message}"
+      @logger.error "#{method} bindPort not found for #{message.fromInstance}:\
+      #{message.bindPort}: #{message}"
 
 
   _createMessageSegment: (type, event) ->

@@ -18,10 +18,13 @@ class ProxyRequest
   # @iid: owner instance iid
   # @role: owner instance role
   # @channel: request channel to be proxified
-  # @port: legacy tcp port
+  # @bindPorts: legacy tcp ports. Right now, is an array with a single port
   #
   constructor: (@owner, @role, @iid, @channel, @bindPorts) ->
     method = 'ProxyRequest.constructor'
+    if (not Array.isArray(@bindPorts)) or (@bindPorts.length > 1)
+      throw new Error "#{method}. Last parameter should be an array with a \
+      single port"
     @bindIp = ipUtils.getIpFromPool() # selects a local IP (127.1.x.x)
     @name = "#{@role}/#{@iid}/#{@channel.name}/#{@bindIp}:#{@bindPorts}"
     @bindPort = @bindPorts[0]
