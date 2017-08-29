@@ -39,7 +39,7 @@ class Duplex extends Channel
 
   addMember: (iid) ->
     if not @members[iid]?
-      @members.push {iid:iid, endpoint:'x', service:'x'}
+      @members.push { iid: iid, endpoint: 'x', service: 'x' }
       @emit 'changeMembership', @members
 
   deleteMember: (iid) ->
@@ -69,7 +69,7 @@ class Duplex extends Channel
           bindPort: message.bindPort
           connectPort: message.connectPort
         }
-        data2 = @parser.encode {result: 'ok'}
+        data2 = @parser.encode { result: 'ok' }
         @emit('message', [message2, data2])
       when 'bindOnDisconnect'
         @logger.debug "MOCK Duplex channel processing bindOnDisconnect"
@@ -77,6 +77,10 @@ class Duplex extends Channel
         @logger.debug "MOCK Duplex channel processing connectOnData"
         data = segments[1]
         @emit 'connectOnData', data
+      when "connectOnDisconnect"
+        @logger.debug "MOCK Duplex channel processing connectOnDisconnect"
+        data = segments[1] ? null
+        @emit 'connectOnDisconnect', data
       else
         throw new Error "Duplex channel unknown message type #{message.type}"
 

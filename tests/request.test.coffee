@@ -14,10 +14,10 @@ describe 'ProxyRequest Tests', ->
 
 
   parser = new slaputils.JsonParser()
-  MESSAGEREQUEST1 = {value: 'request message 1'}
-  MESSAGEREPLY1 = {value: 'reply message 1'}
-  MESSAGEREQUEST2 = {value: 'request message 2'}
-  MESSAGEREPLY2 = {value: 'reply message 2'}
+  MESSAGEREQUEST1 = { value: 'request message 1' }
+  MESSAGEREPLY1 = { value: 'reply message 1' }
+  MESSAGEREQUEST2 = { value: 'request message 2' }
+  MESSAGEREPLY2 = { value: 'reply message 2' }
   logger = null
   mockComponentA = null
 
@@ -29,14 +29,14 @@ describe 'ProxyRequest Tests', ->
     slaputils.setLoggerOwner 'ProxyRequestTest'
     logger = slaputils.getLogger 'ProxyRequestTest'
     logger.configure {
-      'console-log' : false
-      'console-level' : 'debug'
+      'console-log': false
+      'console-level': 'debug'
       'colorize': true
-      'file-log' : false
+      'file-log': false
       'file-level': 'debug'
-      'file-filename' : 'slap.log'
-      'http-log' : false
-      'vm' : ''
+      'file-filename': 'slap.log'
+      'http-log': false
+      'vm': ''
       'auto-method': false
     }
     IpUtils.__unitTestUtil__ 0
@@ -57,7 +57,7 @@ describe 'ProxyRequest Tests', ->
 
 
   it 'Sends a request and receive reply', (done) ->
-    options = {host: proxyRequest1.bindIp, port: proxyRequest1.bindPort}
+    options = { host: proxyRequest1.bindIp, port: proxyRequest1.bindPort }
     client = net.connect options, () ->
       req1.setExpectedReply(parser.encode(MESSAGEREPLY1))
       client.write parser.encode(MESSAGEREQUEST1)
@@ -68,7 +68,7 @@ describe 'ProxyRequest Tests', ->
 
 
   it 'Sends a request and receive reply', (done) ->
-    options = {host: proxyRequest1.bindIp, port: proxyRequest1.bindPort}
+    options = { host: proxyRequest1.bindIp, port: proxyRequest1.bindPort }
     client = net.connect options, () ->
       req1.setExpectedReply(parser.encode(MESSAGEREPLY1))
       client.write parser.encode(MESSAGEREQUEST1)
@@ -83,7 +83,7 @@ describe 'ProxyRequest Tests', ->
           done()
 
   it 'Sends a request and receive a timeout', (done) ->
-    options = {host: proxyRequest1.bindIp, port: proxyRequest1.bindPort}
+    options = { host: proxyRequest1.bindIp, port: proxyRequest1.bindPort }
     client = net.connect options, () ->
       req1.setExpectedReply(null)
       client.write parser.encode(MESSAGEREQUEST1)
