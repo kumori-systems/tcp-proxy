@@ -202,4 +202,11 @@ class ProxyDuplexBind
     return list
 
 
+  # This is a method class used to inject a logger to all dependent classes.
+  # This method is used by slaputils/index.coffee/setLogger
+  #
+  @_loggerDependencies: () ->
+    return [DuplexBindPort]
+
+
 module.exports = ProxyDuplexBind

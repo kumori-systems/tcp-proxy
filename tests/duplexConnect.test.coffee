@@ -2,11 +2,13 @@ net = require 'net'
 slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
+_ = require 'lodash'
+
 index = require('../src/index')
 ProxyDuplexConnect = index.ProxyDuplexConnect
 MockComponent = require('./mock/mockComponent')
 manifestB = require './manifests/B.json'
-_ = require 'lodash'
+
 
 
 describe 'ProxyDuplexConnect Tests', ->

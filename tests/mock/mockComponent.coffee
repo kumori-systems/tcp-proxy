@@ -85,7 +85,7 @@ class MockComponent extends EventEmitter
     MockComponent.ChanTypes = MockChannels.ChanTypes
 
 
-slaputils.setLogger [MockComponent]
+slaputils.setLogger [MockComponent, ProxyTcp]
 slaputils.setParser [MockComponent]
 
 module.exports = MockComponent

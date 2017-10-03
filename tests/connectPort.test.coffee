@@ -19,6 +19,7 @@ describe 'ConnectPort Tests', ->
 
 
   before (done) ->
+    slaputils.setLogger [DuplexConnectPort]
     slaputils.setLoggerOwner 'ConnectPort'
     logger = slaputils.getLogger 'ConnectPort'
     logger.configure {

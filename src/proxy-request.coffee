@@ -1,6 +1,5 @@
 net = require 'net'
 q = require 'q'
-slaputils = require 'slaputils'
 ipUtils = require './ip-utils'
 
 
