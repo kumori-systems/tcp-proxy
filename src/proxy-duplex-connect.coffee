@@ -146,4 +146,11 @@ class ProxyDuplexConnect
     return list
 
 
+  # This is a method class used to inject a logger to all dependent classes.
+  # This method is used by slaputils/index.coffee/setLogger
+  #
+  @_loggerDependencies: () ->
+    return [DuplexConnectPort]
+
+
 module.exports = ProxyDuplexConnect

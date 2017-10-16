@@ -26,6 +26,7 @@ describe 'ProxyRequest Tests', ->
 
 
   before (done) ->
+    slaputils.setLogger [ProxyRequest]
     slaputils.setLoggerOwner 'ProxyRequestTest'
     logger = slaputils.getLogger 'ProxyRequestTest'
     logger.configure {

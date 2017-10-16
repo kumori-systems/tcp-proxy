@@ -25,6 +25,7 @@ describe 'ProxyReply Tests', ->
 
 
   before (done) ->
+    slaputils.setLogger [ProxyReply]
     slaputils.setLoggerOwner 'ProxyReplyTest'
     logger = slaputils.getLogger 'ProxyReplyTest'
     logger.configure {
