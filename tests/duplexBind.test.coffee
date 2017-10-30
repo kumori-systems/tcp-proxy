@@ -5,7 +5,6 @@ should = require 'should'
 
 index = require('../src/index')
 ProxyDuplexBind = index.ProxyDuplexBind
-
 MockComponent = require('./mock/mockComponent')
 manifestA = require './manifests/A.json'
 

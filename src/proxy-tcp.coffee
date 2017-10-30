@@ -1,5 +1,6 @@
 EventEmitter        = require('events').EventEmitter
 q                   = require 'q'
+slaputils           = require 'slaputils'
 ipUtils             = require './ip-utils'
 ProxyDuplexBind     = require './proxy-duplex-bind'
 ProxyDuplexConnect  = require './proxy-duplex-connect'
@@ -35,6 +36,8 @@ class ProxyTcp extends EventEmitter
   #
   constructor: (@iid, @role, @channels) ->
     method = 'ProxyTcp.constructor'
+    if not @logger? # If logger hasn't been injected from outside
+      slaputils.setLogger [ProxyTcp]
     @logger.info "#{method}"
     @_createProxyChannels()
     promises = []
@@ -101,5 +104,14 @@ class ProxyTcp extends EventEmitter
       @logger.error "ProxyTcp.getProxyPorts. Invalid proxy configuration \
       #{config}: #{message}"
     return ports
+
+
+  # This is a method class used to inject a logger to all dependent classes.
+  # This method is used by slaputils/index.coffee/setLogger
+  #
+  @_loggerDependencies: () ->
+    return [ProxyDuplexBind, ProxyDuplexConnect, ProxyRequest, ProxyReply, \
+            ProxySend, ProxyReceive]
+
 
 module.exports = ProxyTcp

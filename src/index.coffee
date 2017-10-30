@@ -9,11 +9,6 @@ ProxySend             = require './proxy-send'
 ProxyReceive          = require './proxy-receive'
 slaputils             = require 'slaputils'
 
-slaputils.setLogger [ProxyTcp, ProxyDuplexBind, ProxyDuplexConnect, \
-                     DuplexBindPort, DuplexConnectPort, \
-                     ProxyRequest, ProxyReply, \
-                     ProxySend, ProxyReceive]
-
 slaputils.setParser [ProxyTcp, ProxyDuplexBind, ProxyDuplexConnect, \
                      DuplexBindPort, DuplexConnectPort, \
                      ProxyRequest, ProxyReply, \

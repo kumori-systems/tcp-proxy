@@ -17,6 +17,7 @@ describe 'BindPort Tests', ->
 
 
   before (done) ->
+    slaputils.setLogger [DuplexBindPort]
     slaputils.setLoggerOwner 'BindPort'
     logger = slaputils.getLogger 'BindPort'
     logger.configure {
