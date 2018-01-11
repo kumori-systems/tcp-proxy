@@ -97,9 +97,9 @@ describe 'ProxyReply Tests', ->
             dynReply.handleRequest [requestDisconnect, null]
           .then () ->
             q.delay(500)
+          .then () ->
             receivedMessage = parser.decode(dynRequest.getLastMessageSended())
             receivedMessage.value.should.equal MESSAGEREPLY.value
-          .then () ->
             done()
           .fail (err) ->
             done err
