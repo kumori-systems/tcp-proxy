@@ -1,9 +1,10 @@
 net = require 'net'
 q = require 'q'
 should = require 'should'
-index = require('../src/index')
+# index = require('../src/index')
 util = require('../src/util')
-DuplexConnectPort = index.DuplexConnectPort
+# DuplexConnectPort = index.DuplexConnectPort
+DuplexConnectPort = require '../src/duplex-connect-port'
 
 #### START: ENABLE LOG LINES FOR DEBUGGING ####
 # This will show all log lines in the code if the test are executed with
@@ -72,25 +73,19 @@ describe 'ConnectPort Tests', ->
     connectPortA1_2.once 'connectOnDisconnect', (event) -> checkClose()
 
 
-  it 'Sends a message and connectport emits a response', (done) ->
+  it 'Sends a message and connectport emits a response', () ->
     test(connectPortA1_1)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, using other connectport', (done) ->
+  it 'Repeats test, using other connectport', () ->
     test(connectPortA1_2)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, overlaying two connectport', (done) ->
+  it 'Repeats test, overlaying two connectport', () ->
     promises = []
     test(connectPortA1_1)
     test(connectPortA1_2)
     q.all promises
-    .then () -> done()
-    .fail (err) -> reject err
 
 
   test = (port) ->

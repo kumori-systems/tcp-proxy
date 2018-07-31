@@ -1,9 +1,10 @@
 net = require 'net'
 q = require 'q'
 should = require 'should'
-index = require('../src/index')
+# index = require('../src/index')
 util = require('../src/util')
-DuplexBindPort = index.DuplexBindPort
+# DuplexBindPort = index.DuplexBindPort
+DuplexBindPort = require '../src/duplex-bind-port'
 
 #### START: ENABLE LOG LINES FOR DEBUGGING ####
 # This will show all log lines in the code if the test are executed with
@@ -30,45 +31,35 @@ describe 'BindPort Tests', ->
   bindPortB3 = null
 
 
-  before (done) ->
+  before () ->
     bindPortB2 = new DuplexBindPort 'A_1', 'B_2', 8000
     bindPortB3 = new DuplexBindPort 'A_1', 'B_3', 8000
     promises = []
     promises.push bindPortB2.init()
     promises.push bindPortB3.init()
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
 
-  after (done) ->
+  after () ->
     promises = []
     promises.push bindPortB2.terminate()
     promises.push bindPortB3.terminate()
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
 
-  it 'Connects tcpclient, sends a message and bindport emits it', (done) ->
+  it 'Connects tcpclient, sends a message and bindport emits it', () ->
     test(bindPortB2)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, using other bindport', (done) ->
+  it 'Repeats test, using other bindport', () ->
     test(bindPortB3)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, overlayng two bindports', (done) ->
+  it 'Repeats test, overlayng two bindports', () ->
     promises = []
     promises.push test(bindPortB2)
     promises.push test(bindPortB3)
     q.all promises
-    .then () -> done()
-    .fail (err) -> reject err
 
 
   test = (port) ->

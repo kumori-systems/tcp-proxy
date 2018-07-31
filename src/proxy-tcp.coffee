@@ -115,4 +115,4 @@ class ProxyTcp extends EventEmitter
             ProxySend, ProxyReceive]
 
 
-module.exports = ProxyTcp
+module.exports.ProxyTcp = ProxyTcp

@@ -69,7 +69,7 @@ describe 'DuplexBind Tests', ->
     , MEMBERSHIP_TIMEOUT
 
 
-  it 'Send and receive messages from 8000', (done) ->
+  it 'Send and receive messages from 8000', () ->
     @timeout MEMBERSHIP_TIMEOUT * 4
     bindport_B_3 = proxyDuplexBind.bindPorts['B_3']['8000']
     options = { host: bindport_B_3.ip, port: bindport_B_3.port }
@@ -78,10 +78,8 @@ describe 'DuplexBind Tests', ->
     # a second overlay connection!
     promises.push clientSendAndReceive(options, "2")
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
-  it 'Send and receive messages from 8001', (done) ->
+  it 'Send and receive messages from 8001', () ->
     @timeout MEMBERSHIP_TIMEOUT * 4
     bindport_B_3 = proxyDuplexBind.bindPorts['B_3']['8001']
     options = { host: bindport_B_3.ip, port: bindport_B_3.port }
@@ -90,8 +88,6 @@ describe 'DuplexBind Tests', ->
     # a second overlay connection!
     promises.push clientSendAndReceive(options, "4")
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
   clientSendAndReceive = (options, id) ->
     method = 'test.clientSendAndReceive()'

@@ -27,9 +27,8 @@ manifestC = require './manifests/C.json'
 
 describe 'Initialization tests', ->
 
-  before (done) ->
+  before () ->
     MockComponent.useThisChannels('mockChannels_testProxyTcp')
-    done()
 
 
   it 'Correct proxytcp manifests A', (done) ->

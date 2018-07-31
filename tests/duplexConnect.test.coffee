@@ -146,6 +146,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_TEST)]
     .fail (err) ->
       done err
+    return undefined
 
 
   it 'Send message + receive response, closed by server', (done) ->
@@ -182,6 +183,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_FORCECLOSE)]
     .fail (err) ->
       isDone err
+    return undefined
 
   it 'Send message + receive response, connection closed by client. Port 8001'
   , (done) ->
@@ -209,6 +211,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg5), parser.encode(MSG_TEST)]
     .fail (err) ->
       done err
+    return undefined
 
   it 'Send message + receive response, closed by server- Port 8001', (done) ->
     dup2DataReceived = false
@@ -240,3 +243,4 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg5), parser.encode(MSG_FORCECLOSE)]
     .fail (err) ->
       done err
+    return undefined
