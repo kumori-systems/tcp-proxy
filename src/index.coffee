@@ -7,12 +7,6 @@ ProxyRequest          = require './proxy-request'
 ProxyReply            = require './proxy-reply'
 ProxySend             = require './proxy-send'
 ProxyReceive          = require './proxy-receive'
-slaputils             = require 'slaputils'
-
-slaputils.setParser [ProxyTcp, ProxyDuplexBind, ProxyDuplexConnect, \
-                     DuplexBindPort, DuplexConnectPort, \
-                     ProxyRequest, ProxyReply, \
-                     ProxySend, ProxyReceive]
 
 exports.ProxyTcp = ProxyTcp
 exports.ProxyDuplexBind = ProxyDuplexBind

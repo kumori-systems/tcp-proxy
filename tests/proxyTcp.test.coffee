@@ -1,9 +1,24 @@
 should = require 'should'
-slaputils = require 'slaputils'
 q = require 'q'
 _ = require 'lodash'
+util = require('../src/util')
 
 MockComponent = require('./mock/mockComponent')
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 manifestA = require './manifests/A.json'
 manifestB = require './manifests/B.json'
@@ -12,22 +27,7 @@ manifestC = require './manifests/C.json'
 
 describe 'Initialization tests', ->
 
-  logger = null
-
   before (done) ->
-    slaputils.setLoggerOwner 'InitializationTest'
-    logger = slaputils.getLogger 'Initializationest'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
     MockComponent.useThisChannels('mockChannels_testProxyTcp')
     done()
 

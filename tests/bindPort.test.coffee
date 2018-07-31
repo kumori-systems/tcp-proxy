@@ -1,36 +1,36 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
 index = require('../src/index')
+util = require('../src/util')
 DuplexBindPort = index.DuplexBindPort
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 describe 'BindPort Tests', ->
 
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   MESSAGETEST = { value1: 'hello', value2: 10 }
   bindPortB2 = null
   bindPortB3 = null
-  logger = null
 
 
   before (done) ->
-    slaputils.setLogger [DuplexBindPort]
-    slaputils.setLoggerOwner 'BindPort'
-    logger = slaputils.getLogger 'BindPort'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
     bindPortB2 = new DuplexBindPort 'A_1', 'B_2', 8000
     bindPortB3 = new DuplexBindPort 'A_1', 'B_3', 8000
     promises = []

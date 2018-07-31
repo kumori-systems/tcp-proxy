@@ -1,11 +1,13 @@
 q = require 'q'
+util = require './util'
 
 
 class ProxyReceive
 
 
-  constructor: (@owner, @role, @iid, @channel) ->
+  constructor: (@owner, @role, @iid, @channel, @ports, @parser) ->
     method = 'ProxyReceive.constructor'
+    @logger ?= util.getLogger()
     @logger.info "#{method} role=#{@role},iid=#{@iid},\
                   channel=#{@channel.name}"
 

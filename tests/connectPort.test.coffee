@@ -1,38 +1,39 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
 index = require('../src/index')
+util = require('../src/util')
 DuplexConnectPort = index.DuplexConnectPort
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+logger = util.getLogger()
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 describe 'ConnectPort Tests', ->
 
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   MESSAGETEST = { value1: 'hello', value2: 10 }
   MESSAGETESTRESPONSE = { result: 'ok' }
   connectPortA1_1 = null
   connectPortA1_2 = null
   tcpServer = null # simulates legacy server
-  logger = null
 
 
   before (done) ->
-    slaputils.setLogger [DuplexConnectPort]
-    slaputils.setLoggerOwner 'ConnectPort'
-    logger = slaputils.getLogger 'ConnectPort'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
     binded = false
     tcpServer = net.createServer (socket) ->
       socket.on 'data', (data) ->

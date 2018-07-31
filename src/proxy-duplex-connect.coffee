@@ -2,6 +2,7 @@ q = require 'q'
 _ = require 'lodash'
 ipUtils = require './ip-utils'
 DuplexConnectPort   = require './duplex-connect-port'
+util = require './util'
 
 
 # Proxy for duplex 'connect' channels
@@ -14,9 +15,11 @@ class ProxyDuplexConnect
   # @iid: owner instance iid
   # @role: owner instance role
   # @channel: duplex channel
+  # @parser: parser to encode and decode the headers
   #
-  constructor: (@owner, @role, @iid, @channel) ->
+  constructor: (@owner, @role, @iid, @channel, @ports, @parser) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}"
+    @logger ?= util.getLogger()
     method = "ProxyDuplexConnect.constructor #{@name}"
     @logger.info method
     @bindIp = ipUtils.getIpFromIid(@iid)

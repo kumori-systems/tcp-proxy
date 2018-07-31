@@ -1,30 +1,25 @@
-slaputils = require 'slaputils'
 _ = require 'lodash'
 should = require 'should'
 IpUtils = require '../src/ip-utils'
+util = require('../src/util')
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 describe 'Ip-Utils tests', ->
-
-
-  logger = null
-
-
-  before (done) ->
-    slaputils.setLoggerOwner 'IpUtilsTest'
-    logger = slaputils.getLogger 'IpUtilsTest'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
-    done()
 
   after (done) ->
     IpUtils.__unitTestUtil__ 0

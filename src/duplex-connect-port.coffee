@@ -1,6 +1,7 @@
 net = require 'net'
 EventEmitter = require('events').EventEmitter
 q = require 'q'
+util = require './util'
 
 
 class DuplexConnectPort extends EventEmitter
@@ -8,6 +9,7 @@ class DuplexConnectPort extends EventEmitter
 
   constructor: (@iid, @remoteIid, @bindIp, @bindPort, @connectPort) ->
     method = 'DuplexConnectPort.constructor'
+    @logger ?= util.getLogger()
     @name = "#{@iid}/#{@remoteIid}:#{@bindIp}:#{@bindPort}:#{@connectPort}"
     @logger.info "#{method} #{@name}"
     @_tcpClient = null

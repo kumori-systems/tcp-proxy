@@ -1,6 +1,5 @@
 EventEmitter        = require('events').EventEmitter
 q                   = require 'q'
-slaputils           = require 'slaputils'
 ipUtils             = require './ip-utils'
 ProxyDuplexBind     = require './proxy-duplex-bind'
 ProxyDuplexConnect  = require './proxy-duplex-connect'
@@ -8,6 +7,7 @@ ProxyRequest        = require './proxy-request'
 ProxyReply          = require './proxy-reply'
 ProxySend           = require './proxy-send'
 ProxyReceive        = require './proxy-receive'
+util                = require './util'
 
 
 class ProxyTcp extends EventEmitter
@@ -33,12 +33,13 @@ class ProxyTcp extends EventEmitter
   #            }
   #            When init() method is invoked, proxy objects are added to this
   #            dictionary.
+  # @parser: optional parameter with the parser to encode and decode the headers
   #
-  constructor: (@iid, @role, @channels) ->
+  constructor: (@iid, @role, @channels, parser) ->
     method = 'ProxyTcp.constructor'
-    if not @logger? # If logger hasn't been injected from outside
-      slaputils.setLogger [ProxyTcp]
+    @logger ?= util.getLogger()
     @logger.info "#{method}"
+    @parser ?= util.getDefaultParser()
     @_createProxyChannels()
     promises = []
     promises.push channel.proxy.init() for name, channel of @channels
@@ -80,7 +81,7 @@ class ProxyTcp extends EventEmitter
         when 'Send' then Proxy = ProxySend
         when 'Receive' then Proxy = ProxyReceive
         else throw new Error "Proxy for #{name}: invalid type #{type}"
-      config.proxy = new Proxy(@, @role, @iid, channel, ports)
+      config.proxy = new Proxy(@, @role, @iid, channel, ports, @parser)
       @logger.info "#{method} Add #{config.proxy.constructor.name} \
                     to #{name} channel"
 
