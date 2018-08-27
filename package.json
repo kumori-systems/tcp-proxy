@@ -1,6 +1,6 @@
 {
   "name": "@kumori/proxy-tcp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "ProxyTcp",
   "author": "Kumori Systems <info@kumori.systems>",
   "licentse": "MIT",
@@ -39,5 +39,11 @@
     "semantic-release-shared-config": "gitlab:kumori/semantic-release-shared-config",
     "should": "13.2.3",
     "taskr": "1.1.0"
+  },
+  "release": {
+    "extends": "semantic-release-shared-config",
+    "noCi": false,
+    "dryRun": false,
+    "npmPublish": true
   }
 }
