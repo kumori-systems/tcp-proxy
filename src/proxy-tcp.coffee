@@ -36,6 +36,7 @@ class ProxyTcp extends EventEmitter
   # @parser: optional parameter with the parser to encode and decode the headers
   #
   constructor: (@iid, @role, @channels, parser) ->
+    a = a
     method = 'ProxyTcp.constructor'
     @logger ?= util.getLogger()
     @logger.info "#{method}"

@@ -31,6 +31,7 @@
     "coffee-script": "1.12.7",
     "coffeelint": "2.1.0",
     "docco": "0.8.0",
+    "husky": "^1.0.0-rc.13",
     "istanbul": "0.4.5",
     "mkdirp": "0.5.1",
     "mocha": "5.2.0",
@@ -45,5 +46,10 @@
     "noCi": false,
     "dryRun": false,
     "npmPublish": true
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "./test.sh"
+    }
   }
 }
