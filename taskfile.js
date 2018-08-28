@@ -6,30 +6,40 @@ const exec = util.promisify(require('child_process').exec)
 
 // var pkg = require('./package.json');
 
-var srcpath = path.resolve(__dirname, 'src')
-var list = exec('git --git-dir ../.git --work-tree .. ls-files', {cwd: srcpath} )
-
 // Gobble up a JSON file with comments
 function getJSON(filepath) {
   const jsonString = "g = " + fs.readFileSync(filepath, 'utf8') + "; g";
   return (new vm.Script(jsonString)).runInNewContext();
 }
 
-function * checkGit(file) {
+// This functions checks which of the source files are included in the current
+// working tree in the git repository
+function * checkGit(sourceFiles) {
+  let filesToIgnore = []
   let srcpath = path.resolve(__dirname, 'src')
-  return list.then((value) => {
-    const files = value.stdout.split('\n')
-    let found = false
-    for (let filename of files) {
-      if (filename.localeCompare(file.base) == 0) {
-        found = true
+  // Get the source files in the working tree
+  return (exec('git --git-dir ../.git --work-tree .. ls-files', {cwd: srcpath} ).then((value) => {
+    const workingFiles = value.stdout.split('\n')
+    // For each source files, check if it isn't in the working directory.
+    for (let index in sourceFiles) {
+      let sourceFile = sourceFiles[index]
+      let found = false
+      for (let workingFile of workingFiles) {
+        if (workingFile.localeCompare(sourceFile.base) == 0) {
+          found = true
+        }
+      }
+      if (!found) {
+        filesToIgnore.push(index)
       }
     }
-    if (!found) {
-      file.dir = ""
-      file.base = ""
+    // Remove from the original source files those not included in the
+    // working tree. We remove them in reverse order to avoid changing the
+    // index of the files to be removed.
+    for (let index of filesToIgnore.reverse()) {
+      sourceFiles.splice(index, 1)
     }
-  })
+  }))
 }
 
 exports.default = function * (task) {
@@ -55,7 +65,7 @@ exports.build = function * (task) {
   yield task.serial(['superclean'])
     .source('src/**/*.coffee')
     .run({
-      every: true,
+      every: false,
       files: true
     }, checkGit)
     .coffee(coffeeops)
