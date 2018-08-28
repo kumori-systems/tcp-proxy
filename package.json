@@ -43,9 +43,9 @@
   },
   "release": {
     "extends": "semantic-release-shared-config",
-    "noCi": false,
-    "dryRun": false,
-    "npmPublish": true
+    "noCi": true,
+    "dryRun": true,
+    "npmPublish": false
   },
   "husky": {
     "hooks": {
