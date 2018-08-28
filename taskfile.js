@@ -20,6 +20,9 @@ function * checkGit(sourceFiles) {
   let srcpath = path.resolve(__dirname, 'src')
   // Get the source files in the working tree
   return (exec('git --git-dir ../.git --work-tree .. ls-files', {cwd: srcpath} ).then((value) => {
+    if ((value.sderr) && (value.stderr.length > 0)) {
+      return Promise.reject(`Error getting the files included in the repository working tree: ${value.stderr}`)
+    }
     const workingFiles = value.stdout.split('\n')
     // For each source files, check if it isn't in the working directory.
     for (let index in sourceFiles) {
