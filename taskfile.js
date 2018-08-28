@@ -3,6 +3,7 @@ const fs = require ('fs');
 const path = require('path');
 const util = require('util')
 const exec = util.promisify(require('child_process').exec)
+const c = require('ansi-colors')
 
 // var pkg = require('./package.json');
 
@@ -25,7 +26,9 @@ function * checkGit(sourceFiles) {
       let sourceFile = sourceFiles[index]
       let found = false
       for (let workingFile of workingFiles) {
-        if (workingFile.localeCompare(sourceFile.base) == 0) {
+        srcfile = path.resolve(__dirname, sourceFile.dir, sourceFile.base)
+        gitfile = path.resolve(srcpath, workingFile)
+        if (gitfile.localeCompare(srcfile) == 0) {
           found = true
         }
       }
@@ -37,6 +40,7 @@ function * checkGit(sourceFiles) {
     // working tree. We remove them in reverse order to avoid changing the
     // index of the files to be removed.
     for (let index of filesToIgnore.reverse()) {
+      console.log(`File "${path.resolve(sourceFiles[index].dir, sourceFiles[index].base)}" not added to the git repository... ${c.bold.red("IGNORING")}`)
       sourceFiles.splice(index, 1)
     }
   }))
@@ -72,8 +76,16 @@ exports.build = function * (task) {
     .target('lib')
 }
 
+exports.devbuild = function * (task) {
+  let coffeeops = getJSON('./coffeeconfig.json');
+  yield task.serial(['superclean'])
+    .source('src/**/*.coffee')
+    .coffee(coffeeops)
+    .target('lib')
+}
+
 exports.test = function * (task) {
-  yield task.serial(['build'])
+  yield task.serial(['devbuild'])
     .source("./tests/**/*.test.coffee")
     .shell({
       cmd: 'mocha --exit --require coffee-script/register --require coffee-coverage/register-istanbul -u bdd --colors --reporter spec $glob',
@@ -90,12 +102,3 @@ exports.lint = function * (task) {
       glob: true
     })
 }
-
-// exports.mytest = function * (task) {
-//   yield task.source("src/**/*.coffee")
-//     .run({
-//       every: true,
-//       files: true
-//     }, checkGit)
-//     .target('mytest')
-// }
