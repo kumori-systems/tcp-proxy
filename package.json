@@ -1,7 +1,7 @@
 {
-  "name": "@kumori/proxy-tcp",
+  "name": "@kumori/tcp-proxy",
   "version": "1.0.0",
-  "description": "ProxyTcp",
+  "description": "Proxy for tunneling TCP connections through Kumori's channels",
   "author": "Kumori Systems <info@kumori.systems>",
   "licentse": "MIT",
   "repository": "github:kumori-systems/tcp-proxy",
