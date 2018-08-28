@@ -1,7 +1,7 @@
 _ = require 'lodash'
 q = require 'q'
 EventEmitter = require('events').EventEmitter
-util = require '../../src/util'
+util = require '../../lib/util'
 
 ChanTypes =
   DUPLEX:   'slap://slapdomain/endpoints/duplex'

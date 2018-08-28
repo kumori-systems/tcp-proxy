@@ -1,9 +1,9 @@
 net = require 'net'
 q = require 'q'
 should = require 'should'
-index = require('../src/index')
-IpUtils = require '../src/ip-utils'
-util = require('../src/util')
+index = require('../lib/index')
+IpUtils = require '../lib/ip-utils'
+util = require('../lib/util')
 ProxyRequest = index.ProxyRequest
 
 MockComponent = require('./mock/mockComponent')

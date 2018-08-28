@@ -1,8 +1,8 @@
 _ = require 'lodash'
 q = require 'q'
 EventEmitter = require('events').EventEmitter
-util = require '../../src/util'
-ProxyTcp  = require('../../src/index').ProxyTcp
+util = require '../../lib/util'
+TcpProxy  = require('../../lib/index').TcpProxy
 
 
 class MockComponent extends EventEmitter
@@ -25,7 +25,7 @@ class MockComponent extends EventEmitter
 
   run: () -> # for tests, returns a promise
     [server, legconfig, channels] = @_computeServerParametersAndChannels()
-    @proxy = new ProxyTcp @iid, @role, channels
+    @proxy = new TcpProxy @iid, @role, channels
     @proxy.on 'ready', (bindIp) =>
       @_startLegacyServer server, bindIp, legconfig
     @proxy.on 'error', (err) =>

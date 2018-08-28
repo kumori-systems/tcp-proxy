@@ -8,7 +8,7 @@ ProxyReply            = require './proxy-reply'
 ProxySend             = require './proxy-send'
 ProxyReceive          = require './proxy-receive'
 
-exports.ProxyTcp = ProxyTcp
+exports.TcpProxy = ProxyTcp
 # exports.ProxyDuplexBind = ProxyDuplexBind
 # exports.ProxyDuplexConnect = ProxyDuplexConnect
 # exports.DuplexBindPort = DuplexBindPort

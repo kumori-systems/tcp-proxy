@@ -2,9 +2,9 @@ net = require 'net'
 q = require 'q'
 should = require 'should'
 _ = require 'lodash'
-util = require('../src/util')
+util = require('../lib/util')
 
-index = require('../src/index')
+index = require('../lib/index')
 ProxyDuplexConnect = index.ProxyDuplexConnect
 MockComponent = require('./mock/mockComponent')
 manifestB = require './manifests/B.json'

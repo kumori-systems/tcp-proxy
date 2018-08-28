@@ -1,9 +1,9 @@
 net = require 'net'
 q = require 'q'
 should = require 'should'
-util = require('../src/util')
+util = require('../lib/util')
 
-index = require('../src/index')
+index = require('../lib/index')
 ProxyDuplexBind = index.ProxyDuplexBind
 MockComponent = require('./mock/mockComponent')
 manifestA = require './manifests/A.json'

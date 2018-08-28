@@ -1,10 +1,10 @@
 net = require 'net'
 q = require 'q'
 should = require 'should'
-# index = require('../src/index')
-util = require('../src/util')
+# index = require('../lib/index')
+util = require('../lib/util')
 # DuplexBindPort = index.DuplexBindPort
-DuplexBindPort = require '../src/duplex-bind-port'
+DuplexBindPort = require '../lib/duplex-bind-port'
 
 #### START: ENABLE LOG LINES FOR DEBUGGING ####
 # This will show all log lines in the code if the test are executed with

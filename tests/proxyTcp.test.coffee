@@ -1,7 +1,7 @@
 should = require 'should'
 q = require 'q'
 _ = require 'lodash'
-util = require('../src/util')
+util = require('../lib/util')
 
 MockComponent = require('./mock/mockComponent')
 

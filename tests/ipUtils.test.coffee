@@ -1,7 +1,7 @@
 _ = require 'lodash'
 should = require 'should'
-IpUtils = require '../src/ip-utils'
-util = require('../src/util')
+IpUtils = require '../lib/ip-utils'
+util = require('../lib/util')
 
 #### START: ENABLE LOG LINES FOR DEBUGGING ####
 # This will show all log lines in the code if the test are executed with
