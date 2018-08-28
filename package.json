@@ -50,8 +50,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "./test.sh",
-      "pre-push": "./test.sh"
+      "pre-commit": "hooks/pre-commit.sh"
     }
   }
 }
