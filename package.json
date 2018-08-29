@@ -44,7 +44,7 @@
   },
   "release": {
     "extends": "semantic-release-shared-config",
-    "noCi": true,
+    "noCi": false,
     "dryRun": false,
     "npmPublish": true
   },
