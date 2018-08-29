@@ -4,9 +4,6 @@ BASE = 'tcp-proxy'
 
 class Parser
 
-  constructor: ->
-    @patata = "patata"
-
   encode: (text) ->
     return JSON.stringify text
 
