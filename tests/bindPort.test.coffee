@@ -1,74 +1,65 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
-index = require('../src/index')
-DuplexBindPort = index.DuplexBindPort
+# index = require('../lib/index')
+util = require('../lib/util')
+# DuplexBindPort = index.DuplexBindPort
+DuplexBindPort = require '../lib/duplex-bind-port'
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 describe 'BindPort Tests', ->
 
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   MESSAGETEST = { value1: 'hello', value2: 10 }
   bindPortB2 = null
   bindPortB3 = null
-  logger = null
 
 
-  before (done) ->
-    slaputils.setLogger [DuplexBindPort]
-    slaputils.setLoggerOwner 'BindPort'
-    logger = slaputils.getLogger 'BindPort'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
+  before () ->
     bindPortB2 = new DuplexBindPort 'A_1', 'B_2', 8000
     bindPortB3 = new DuplexBindPort 'A_1', 'B_3', 8000
     promises = []
     promises.push bindPortB2.init()
     promises.push bindPortB3.init()
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
 
-  after (done) ->
+  after () ->
     promises = []
     promises.push bindPortB2.terminate()
     promises.push bindPortB3.terminate()
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
 
-  it 'Connects tcpclient, sends a message and bindport emits it', (done) ->
+  it 'Connects tcpclient, sends a message and bindport emits it', () ->
     test(bindPortB2)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, using other bindport', (done) ->
+  it 'Repeats test, using other bindport', () ->
     test(bindPortB3)
-    .then () -> done()
-    .fail (err) -> reject err
 
 
-  it 'Repeats test, overlayng two bindports', (done) ->
+  it 'Repeats test, overlayng two bindports', () ->
     promises = []
     promises.push test(bindPortB2)
     promises.push test(bindPortB3)
     q.all promises
-    .then () -> done()
-    .fail (err) -> reject err
 
 
   test = (port) ->

@@ -1,8 +1,8 @@
 q = require 'q'
 _ = require 'lodash'
 DuplexBindPort = require './duplex-bind-port'
-slaputils = require 'slaputils'
-Semaphore = slaputils.Semaphore
+Semaphore = require './semaphore'
+util = require './util'
 
 
 # Proxy for duplex 'bind' channels
@@ -17,9 +17,11 @@ class ProxyDuplexBind
   # @role: owner instance role
   # @channel: duplex channel
   # @bindPorts: legacy tcp ports.
+  # @parser: parser to encode and decode the headers
   #
-  constructor: (@owner, @role, @iid, @channel, @ports) ->
+  constructor: (@owner, @role, @iid, @channel, @ports, @parser) ->
     @name = "#{@role}/#{@iid}/#{@channel.name}/[#{@ports}]"
+    @logger ?= util.getLogger()
     method = "ProxyDuplexBind.constructor #{@name}"
     @logger.info method
     if not Array.isArray(@ports)

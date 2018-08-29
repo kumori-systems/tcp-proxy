@@ -1,7 +1,7 @@
 _ = require 'lodash'
 q = require 'q'
 EventEmitter = require('events').EventEmitter
-slaputils = require 'slaputils'
+util = require '../../lib/util'
 
 
 ChanTypes =
@@ -14,28 +14,36 @@ ChanTypes =
 
 class Channel extends EventEmitter
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Send extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Receive extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Request extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Reply extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Duplex extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
     @members = [@iid]
   getMembership: () ->
     return q(@members)
-
-
-slaputils.setLogger [Send, Receive, Request, Reply, Duplex]
-slaputils.setParser [Send, Receive, Request, Reply, Duplex]
 
 module.exports.Send = Send
 module.exports.Receive = Receive

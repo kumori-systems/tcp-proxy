@@ -1,6 +1,7 @@
 net = require 'net'
 q = require 'q'
 ipUtils = require './ip-utils'
+util = require './util'
 
 
 # 'Proxyfication' using LB connector (request side)
@@ -18,9 +19,11 @@ class ProxyRequest
   # @role: owner instance role
   # @channel: request channel to be proxified
   # @bindPorts: legacy tcp ports. Right now, is an array with a single port
+  # @parser: parser to encode and decode the headers
   #
-  constructor: (@owner, @role, @iid, @channel, @bindPorts) ->
+  constructor: (@owner, @role, @iid, @channel, @bindPorts, @parser) ->
     method = 'ProxyRequest.constructor'
+    @logger ?= util.getLogger()
     if (not Array.isArray(@bindPorts)) or (@bindPorts.length > 1)
       throw new Error "#{method}. Last parameter should be an array with a \
       single port"

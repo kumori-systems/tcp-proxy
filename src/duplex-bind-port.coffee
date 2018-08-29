@@ -2,6 +2,7 @@ net = require 'net'
 EventEmitter = require('events').EventEmitter
 q = require 'q'
 ipUtils = require './ip-utils'
+util = require './util'
 
 
 class DuplexBindPort extends EventEmitter
@@ -9,6 +10,7 @@ class DuplexBindPort extends EventEmitter
 
   constructor: (@iid, @remoteIid, @port) ->
     method = 'DuplexBindPort.constructor'
+    @logger ?= util.getLogger()
     @ip = ipUtils.getIpFromIid @remoteIid
     @name = "#{@iid}/#{@remoteIid}:#{@ip}:#{@port}"
     @logger.info "#{method} #{@name}"

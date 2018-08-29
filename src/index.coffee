@@ -1,4 +1,4 @@
-ProxyTcp              = require './proxy-tcp'
+ProxyTcp              = require('./proxy-tcp').ProxyTcp
 ProxyDuplexBind       = require './proxy-duplex-bind'
 ProxyDuplexConnect    = require './proxy-duplex-connect'
 DuplexBindPort        = require './duplex-bind-port'
@@ -7,19 +7,13 @@ ProxyRequest          = require './proxy-request'
 ProxyReply            = require './proxy-reply'
 ProxySend             = require './proxy-send'
 ProxyReceive          = require './proxy-receive'
-slaputils             = require 'slaputils'
 
-slaputils.setParser [ProxyTcp, ProxyDuplexBind, ProxyDuplexConnect, \
-                     DuplexBindPort, DuplexConnectPort, \
-                     ProxyRequest, ProxyReply, \
-                     ProxySend, ProxyReceive]
-
-exports.ProxyTcp = ProxyTcp
-exports.ProxyDuplexBind = ProxyDuplexBind
-exports.ProxyDuplexConnect = ProxyDuplexConnect
-exports.DuplexBindPort = DuplexBindPort
-exports.DuplexConnectPort = DuplexConnectPort
-exports.ProxyRequest = ProxyRequest
-exports.ProxyReply = ProxyReply
-exports.ProxySend = ProxySend
-exports.ProxyReceive = ProxyReceive
+exports.TcpProxy = ProxyTcp
+# exports.ProxyDuplexBind = ProxyDuplexBind
+# exports.ProxyDuplexConnect = ProxyDuplexConnect
+# exports.DuplexBindPort = DuplexBindPort
+# exports.DuplexConnectPort = DuplexConnectPort
+# exports.ProxyRequest = ProxyRequest
+# exports.ProxyReply = ProxyReply
+# exports.ProxySend = ProxySend
+# exports.ProxyReceive = ProxyReceive

@@ -1,13 +1,29 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
 _ = require 'lodash'
+util = require('../lib/util')
 
-index = require('../src/index')
+index = require('../lib/index')
 ProxyDuplexConnect = index.ProxyDuplexConnect
 MockComponent = require('./mock/mockComponent')
 manifestB = require './manifests/B.json'
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+logger = util.getLogger()
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 
@@ -19,11 +35,10 @@ describe 'ProxyDuplexConnect Tests', ->
   MSG_CHECKOVERLAYRESPONSE = { result: 'overlay' }
   MSG_FORCECLOSE = { value1: 'forceclose' }
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   mockComponentB = null
   proxyDuplexConnect = null
   dup2 = null
-  logger = null
   ephimeralPort = 5001
   proxyTcpConfiguration = JSON.parse(manifestB.configuration.proxyTcp)
   minPort = proxyTcpConfiguration['dup2'].minPort
@@ -89,17 +104,6 @@ describe 'ProxyDuplexConnect Tests', ->
 
 
   before (done) ->
-    slaputils.setLoggerOwner 'ProxyDuplexConnectTest'
-    logger = slaputils.getLogger 'ProxyDuplexConnectTest'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'http-log': false
-      'vm': ''
-      'auto-method': true
-    }
     MockComponent.useThisChannels('mockChannels_testDuplex')
     mockComponentB = new MockComponent 'B_2', 'B', manifestB.configuration, \
                                        manifestB.provided, manifestB.required
@@ -142,6 +146,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_TEST)]
     .fail (err) ->
       done err
+    return undefined
 
 
   it 'Send message + receive response, closed by server', (done) ->
@@ -178,6 +183,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg2), parser.encode(MSG_FORCECLOSE)]
     .fail (err) ->
       isDone err
+    return undefined
 
   it 'Send message + receive response, connection closed by client. Port 8001'
   , (done) ->
@@ -205,6 +211,7 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg5), parser.encode(MSG_TEST)]
     .fail (err) ->
       done err
+    return undefined
 
   it 'Send message + receive response, closed by server- Port 8001', (done) ->
     dup2DataReceived = false
@@ -236,3 +243,4 @@ describe 'ProxyDuplexConnect Tests', ->
       dup2.deliverMessage [parser.encode(msg5), parser.encode(MSG_FORCECLOSE)]
     .fail (err) ->
       done err
+    return undefined

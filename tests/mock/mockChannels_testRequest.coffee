@@ -1,7 +1,7 @@
 _ = require 'lodash'
 q = require 'q'
 EventEmitter = require('events').EventEmitter
-slaputils = require 'slaputils'
+util = require '../../lib/util'
 
 ChanTypes =
   DUPLEX:   'slap://slapdomain/endpoints/duplex'
@@ -14,15 +14,23 @@ ChanTypes =
 class Channel extends EventEmitter
   @dynCount = 0
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Send extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Receive extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 class Duplex extends Channel
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
     @members = [@iid]
   getMembership: () ->
     return q(@members)
@@ -30,6 +38,8 @@ class Duplex extends Channel
 class Request extends Channel
 
   constructor: (@name, @iid) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
     @runtimeAgent =
       createChannel: () => return new Reply("#{@name}_#{Channel.dynCount++}", \
                                             @iid)
@@ -97,10 +107,8 @@ class Request extends Channel
 class Reply extends Channel
 
   constructor: (@name, @iid) ->
-
-
-slaputils.setLogger [Send, Receive, Request, Reply, Duplex]
-slaputils.setParser [Send, Receive, Request, Reply, Duplex]
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
 
 module.exports.Send = Send
 module.exports.Receive = Receive

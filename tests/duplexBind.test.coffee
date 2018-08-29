@@ -1,38 +1,42 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
+util = require('../lib/util')
 
-index = require('../src/index')
+index = require('../lib/index')
 ProxyDuplexBind = index.ProxyDuplexBind
 MockComponent = require('./mock/mockComponent')
 manifestA = require './manifests/A.json'
+
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+logger = util.getLogger()
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
 
 
 describe 'DuplexBind Tests', ->
 
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   MEMBERSHIP_TIMEOUT = 500
   MESSAGETEST = { value1: 'hello', value2: 10 }
   mockComponentA = null
   proxyDuplexBind = null
   dup1 = null
-  logger = null
 
 
   before (done) ->
-    slaputils.setLoggerOwner 'DuplexBind'
-    logger = slaputils.getLogger 'DuplexBind'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'http-log': false
-      'vm': ''
-      'auto-method': true
-    }
 
     MockComponent.useThisChannels('mockChannels_testDuplex')
 
@@ -65,7 +69,7 @@ describe 'DuplexBind Tests', ->
     , MEMBERSHIP_TIMEOUT
 
 
-  it 'Send and receive messages from 8000', (done) ->
+  it 'Send and receive messages from 8000', () ->
     @timeout MEMBERSHIP_TIMEOUT * 4
     bindport_B_3 = proxyDuplexBind.bindPorts['B_3']['8000']
     options = { host: bindport_B_3.ip, port: bindport_B_3.port }
@@ -74,10 +78,8 @@ describe 'DuplexBind Tests', ->
     # a second overlay connection!
     promises.push clientSendAndReceive(options, "2")
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
-  it 'Send and receive messages from 8001', (done) ->
+  it 'Send and receive messages from 8001', () ->
     @timeout MEMBERSHIP_TIMEOUT * 4
     bindport_B_3 = proxyDuplexBind.bindPorts['B_3']['8001']
     options = { host: bindport_B_3.ip, port: bindport_B_3.port }
@@ -86,8 +88,6 @@ describe 'DuplexBind Tests', ->
     # a second overlay connection!
     promises.push clientSendAndReceive(options, "4")
     q.all promises
-    .then () -> done()
-    .fail (err) -> done err
 
   clientSendAndReceive = (options, id) ->
     method = 'test.clientSendAndReceive()'

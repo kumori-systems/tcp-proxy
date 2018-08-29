@@ -1,24 +1,38 @@
 net = require 'net'
-slaputils = require 'slaputils'
 q = require 'q'
 should = require 'should'
-index = require('../src/index')
-IpUtils = require '../src/ip-utils'
+index = require('../lib/index')
+IpUtils = require '../lib/ip-utils'
+util = require('../lib/util')
 ProxyRequest = index.ProxyRequest
 
 MockComponent = require('./mock/mockComponent')
 manifestA = require './manifests/A.json'
 
+#### START: ENABLE LOG LINES FOR DEBUGGING ####
+# This will show all log lines in the code if the test are executed with
+# DEBUG="tcp-proxy:*" set in the environment. For example, running:
+#
+# $ DEBUG="tcp-proxy:*" npm test
+#
+debug = require 'debug'
+# debug.enable 'tcp-proxy:*'
+# debug.enable 'tcp-proxy:info, tcp-proxy:debug'
+debug.log = () ->
+  console.log arguments...
+#### END: ENABLE LOG LINES FOR DEBUGGING ####
+
+#-------------------------------------------------------------------------------
+
 
 describe 'ProxyRequest Tests', ->
 
 
-  parser = new slaputils.JsonParser()
+  parser = util.getDefaultParser()
   MESSAGEREQUEST1 = { value: 'request message 1' }
   MESSAGEREPLY1 = { value: 'reply message 1' }
   MESSAGEREQUEST2 = { value: 'request message 2' }
   MESSAGEREPLY2 = { value: 'reply message 2' }
-  logger = null
   mockComponentA = null
 
   proxyRequest1 = null
@@ -26,20 +40,6 @@ describe 'ProxyRequest Tests', ->
 
 
   before (done) ->
-    slaputils.setLogger [ProxyRequest]
-    slaputils.setLoggerOwner 'ProxyRequestTest'
-    logger = slaputils.getLogger 'ProxyRequestTest'
-    logger.configure {
-      'console-log': false
-      'console-level': 'debug'
-      'colorize': true
-      'file-log': false
-      'file-level': 'debug'
-      'file-filename': 'slap.log'
-      'http-log': false
-      'vm': ''
-      'auto-method': false
-    }
     IpUtils.__unitTestUtil__ 0
     MockComponent.useThisChannels('mockChannels_testRequest')
     mockComponentA = new MockComponent 'A_1', 'A', manifestA.configuration, \

@@ -1,8 +1,8 @@
 _ = require 'lodash'
 q = require 'q'
 EventEmitter = require('events').EventEmitter
-slaputils = require 'slaputils'
-ProxyTcp  = require('../../src/index').ProxyTcp
+util = require '../../lib/util'
+TcpProxy  = require('../../lib/index').TcpProxy
 
 
 class MockComponent extends EventEmitter
@@ -16,6 +16,8 @@ class MockComponent extends EventEmitter
   @ChanTypes: null
 
   constructor: (@iid, @role, @parameters, provided, required) ->
+    @logger ?= util.getLogger()
+    @parser ?= util.getDefaultParser()
     @offerings = {}
     @dependencies = {}
     @offerings[name] = @_createChannel(name, data) for name, data of provided
@@ -23,7 +25,7 @@ class MockComponent extends EventEmitter
 
   run: () -> # for tests, returns a promise
     [server, legconfig, channels] = @_computeServerParametersAndChannels()
-    @proxy = new ProxyTcp @iid, @role, channels
+    @proxy = new TcpProxy @iid, @role, channels
     @proxy.on 'ready', (bindIp) =>
       @_startLegacyServer server, bindIp, legconfig
     @proxy.on 'error', (err) =>
@@ -83,9 +85,5 @@ class MockComponent extends EventEmitter
     MockComponent.Reply = MockChannels.Reply
     MockComponent.Duplex = MockChannels.Duplex
     MockComponent.ChanTypes = MockChannels.ChanTypes
-
-
-slaputils.setLogger [MockComponent, ProxyTcp]
-slaputils.setParser [MockComponent]
 
 module.exports = MockComponent
