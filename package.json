@@ -1,6 +1,6 @@
 {
   "name": "@kumori/tcp-proxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Proxy for tunneling TCP connections through Kumori's channels",
   "author": "Kumori Systems <info@kumori.systems>",
   "licentse": "MIT",
@@ -44,7 +44,7 @@
   },
   "release": {
     "extends": "semantic-release-shared-config",
-    "noCi": false,
+    "noCi": true,
     "dryRun": false,
     "npmPublish": true
   },
