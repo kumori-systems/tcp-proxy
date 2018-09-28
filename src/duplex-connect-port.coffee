@@ -2,6 +2,7 @@ net = require 'net'
 EventEmitter = require('events').EventEmitter
 q = require 'q'
 util = require './util'
+ipUtils = require './ip-utils'
 
 
 class DuplexConnectPort extends EventEmitter
@@ -49,7 +50,8 @@ class DuplexConnectPort extends EventEmitter
     @logger.info "#{method} #{@name}"
     return q.promise (resolve, reject) =>
       connected = false
-      options = { host: @bindIp, port: @bindPort }
+      options = { host: @bindIp, port: @bindPort, \
+                  localAddress: ipUtils.getIpFromIid(@remoteIid) }
       @_tcpClient = net.connect options, () =>
         @logger.info "#{method} #{@name} connected #{JSON.stringify options}"
         connected = true
