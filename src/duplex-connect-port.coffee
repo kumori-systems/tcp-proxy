@@ -50,6 +50,7 @@ class DuplexConnectPort extends EventEmitter
     @logger.info "#{method} #{@name}"
     return q.promise (resolve, reject) =>
       connected = false
+      # LocalAddress setted for ticket-1236 / quick fix
       options = { host: @bindIp, port: @bindPort, \
                   localAddress: ipUtils.getIpFromIid(@remoteIid) }
       @_tcpClient = net.connect options, () =>
