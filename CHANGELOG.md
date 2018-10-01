@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/kumori-systems/tcp-proxy/compare/v1.0.2...v1.0.3) (2018-10-01)
+
+
+### Bug Fixes
+
+* **license:** MIT License ([5b9d07e](https://github.com/kumori-systems/tcp-proxy/commit/5b9d07e))
+
 ## [1.0.2](https://github.com/kumori-systems/tcp-proxy/compare/v1.0.1...v1.0.2) (2018-10-01)
 
 
