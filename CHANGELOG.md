@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/kumori-systems/tcp-proxy/compare/v1.0.1...v1.0.2) (2018-10-01)
+
+
+### Bug Fixes
+
+* **duplex:** Set socket.localAddress property when 'fake' connections are stablished using proxy-duplex-connect ([70e6485](https://github.com/kumori-systems/tcp-proxy/commit/70e6485))
+
 ## [1.0.1](https://github.com/kumori-systems/tcp-proxy/compare/v1.0.0...v1.0.1) (2018-08-28)
 
 
