@@ -3,7 +3,7 @@
   "version": "1.0.2",
   "description": "Proxy for tunneling TCP connections through Kumori's channels",
   "author": "Kumori Systems <info@kumori.systems>",
-  "licentse": "MIT",
+  "license": "MIT",
   "repository": "github:kumori-systems/tcp-proxy",
   "scripts": {
     "build": "taskr build",
